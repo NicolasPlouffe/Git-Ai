@@ -36,3 +36,18 @@ class ProviderResponseError(ProviderError):
 
 class CommitMessageError(GitAIError):
     """Raised when a commit message cannot be generated or normalized."""
+
+class GitAIError(Exception):
+    """Base exception for the Git AI Commit Assistant."""
+
+
+class ProviderError(GitAIError):
+    """Erreur générique liée au provider LLM."""
+
+
+class ProviderConnectionError(ProviderError):
+    """Erreur de connexion au provider (backend inaccessible ou timeout)."""
+
+
+class ProviderResponseError(ProviderError):
+    """Réponse du provider invalide ou inexploitable."""
