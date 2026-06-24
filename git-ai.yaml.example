@@ -1,0 +1,14 @@
+provider: ollama
+model: llama3
+language: fr
+# languages: fr, en, es, pt
+base_url: http://localhost:11434
+
+commit:
+  format: conventional
+  max_subject_length: 72
+  include_body: false
+
+git:
+  push_after_commit: false
+  remote: origin
