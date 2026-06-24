@@ -1,10 +1,14 @@
-default_provider: ollama
-default_model: llama3
+provider: ollama
+model: llama3
 language: fr
-
-ollama:
-  host: http://localhost:11434
+# languages: fr, en, es, pt
+base_url: http://localhost:11434
 
 commit:
-  style: conventional
+  format: conventional
   max_subject_length: 72
+  include_body: false
+
+git:
+  push_after_commit: false
+  remote: origin
