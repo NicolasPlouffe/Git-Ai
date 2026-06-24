@@ -1,3 +1,39 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+
+# Virtual environments
+.venv/
+venv/
+
+# Tooling
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# IDE
+.idea/
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment files
+.env
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+
+
 # Created by https://www.toptal.com/developers/gitignore/api/python,jetbrains+all,pycharm+all
 # Edit at https://www.toptal.com/developers/gitignore?templates=python,jetbrains+all,pycharm+all
 
