@@ -45,6 +45,11 @@ class FileStatus:
         return self.index_status == "?" and self.worktree_status == "?"
 
     @property
+    def is_tracked(self) -> bool:
+        """True si le fichier est déjà suivi par Git."""
+        return not self.is_untracked
+
+    @property
     def is_modified_in_worktree(self) -> bool:
         """True si le working tree contient une modification non encore indexée."""
         return self.worktree_status not in {" ", "?"}
@@ -86,6 +91,18 @@ class RepoStatus:
     def untracked_files(self) -> List[FileStatus]:
         """Liste des fichiers non suivis."""
         return [file for file in self.files if file.is_untracked]
+
+    @property
+    def all_changed_paths(self) -> List[str]:
+        """Liste de tous les chemins connus par le statut Git courant."""
+        return [file.path for file in self.files]
+
+    def get_file(self, path: str) -> FileStatus | None:
+        """Retourne le statut d'un fichier par son chemin, sinon None."""
+        for file in self.files:
+            if file.path == path:
+                return file
+        return None
 
 
 def get_repo_status(repo_path: str | Path | None = None) -> RepoStatus:
@@ -196,7 +213,15 @@ def _parse_file_status_line(line: str) -> FileStatus:
 
     index_status = line[0]
     worktree_status = line[1]
-    path = line[3:]
+
+    raw_path = line[3:]
+
+    # Pour un renommage/copie de type "old -> new",
+    # on retient le chemin cible final, plus utile pour les couches supérieures.
+    if " -> " in raw_path:
+        path = raw_path.split(" -> ", 1)[1].strip()
+    else:
+        path = raw_path
 
     return FileStatus(
         path=path,
