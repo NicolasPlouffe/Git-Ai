@@ -11,7 +11,7 @@ import yaml
 DEFAULT_CONFIG_FILENAMES = ("git-ai.yaml", "git-ai.yml")
 
 SUPPORTED_PROVIDERS = {"ollama", "llamacpp", "openai-compatible"}
-SUPPORTED_LANGUAGES = {"fr", "en", "es", "pr"}
+SUPPORTED_LANGUAGES = {"fr", "en", "es", "pt"}
 SUPPORTED_COMMIT_FORMATS = {"conventional", "simple"}
 
 
@@ -161,7 +161,12 @@ def load_env_overrides(env: dict[str, str] | None = None) -> dict[str, Any]:
         commit["format"] = commit_format
 
     if max_subject_length := source.get("GIT_AI_MAX_SUBJECT_LENGTH"):
-        commit["max_subject_length"] = int(max_subject_length)
+        try:
+            commit["max_subject_length"] = int(max_subject_length)
+        except ValueError as exc:
+            raise ConfigError(
+                "GIT_AI_MAX_SUBJECT_LENGTH must be an integer."
+            ) from exc
 
     if include_body := source.get("GIT_AI_INCLUDE_BODY"):
         commit["include_body"] = _string_to_bool(include_body)
