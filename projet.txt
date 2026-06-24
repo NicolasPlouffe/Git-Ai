@@ -1,0 +1,70 @@
+.
+├── docs
+│   ├── architecture.md
+│   ├── config.md
+│   ├── prompts.md
+│   └── roadmap.md
+├── git-ai.yaml.example
+├── projet.txt
+├── pyproject.toml
+├── README.md
+├── scripts
+│   ├── demo.sh
+│   ├── install-hook.sh
+│   └── run-local.sh
+├── src
+│   └── git-ai
+│       ├── cli.py
+│       ├── config.py
+│       ├── exceptions.py
+│       ├── git
+│       │   ├── branch.py
+│       │   ├── commit.py
+│       │   ├── diff.py
+│       │   ├── __init__.py
+│       │   ├── stage.py
+│       │   └── status.py
+│       ├── __init__.py
+│       ├── logging_config.py
+│       ├── __main__.py
+│       ├── models.py
+│       ├── prompts
+│       │   ├── commit_en.txt
+│       │   ├── commit_es.txt
+│       │   ├── commit_fr.txt
+│       │   ├── commit_pr.txt
+│       │   ├── pr_en.txt
+│       │   ├── pr_es.txt
+│       │   ├── pr_fr.txt
+│       │   └── pr_pr.txt
+│       ├── providers
+│       │   ├── base.py
+│       │   ├── __init__.py
+│       │   ├── llama.cpp.py
+│       │   ├── ollama.py
+│       │   └── openai_compat.py
+│       ├── services
+│       │   ├── commit_message_sevice.py
+│       │   ├── file_selection_service.py
+│       │   ├── __init__.py
+│       │   ├── pr_description_service.py
+│       │   └── prompt_service.py
+│       └── utils
+│           ├── __init__.py
+│           ├── paths.py
+│           ├── subprocesses.py
+│           └── text.py
+└── tests
+    ├── fixtures
+    ├── integration
+    │   ├── test_git_commit_flow.py
+    │   ├── test_git_diff.py
+    │   └── test_ollama_provider.py
+    └── unit
+        ├── test_commit_message_service.py
+        ├── test_config.py
+        ├── test_file_selection_service.py
+        ├── test_models.py
+        └── test_prompt_service.py
+
+14 directories, 54 files

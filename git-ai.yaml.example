@@ -1,0 +1,10 @@
+default_provider: ollama
+default_model: llama3
+language: fr
+
+ollama:
+  host: http://localhost:11434
+
+commit:
+  style: conventional
+  max_subject_length: 72
