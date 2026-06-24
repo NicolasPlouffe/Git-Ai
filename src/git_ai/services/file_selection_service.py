@@ -44,12 +44,14 @@ class FileSelectionService:
     Service métier chargé de déterminer les fichiers à inclure dans le commit.
 
     Il s'appuie sur :
-    - ggit_file_query_service : pour interroger l'état Git (staged, suivis, ignorés, etc.).
-    - git_path_resolver : pour normaliser les chemins par rapport à la racine du repo.
+    - git_files_gateway : pour interroger les informations Git utiles
+      à la sélection de fichiers.
+    - git_path_resolver : pour normaliser les chemins par rapport
+      à la racine du repo.
     """
 
-    def __init__(self, git_file_query_service, git_path_resolver):
-        self.git_file_query_service = git_file_query_service
+    def __init__(self, git_files_gateway, git_path_resolver):
+        self.git_files_gateway = git_files_gateway
         self.git_path_resolver = git_path_resolver
 
     def select_files(
@@ -88,7 +90,7 @@ class FileSelectionService:
         - Si aucun fichier n'est stagé : on lève une erreur explicite.
         - Sinon, on retourne la liste des chemins normalisés, dédupliqués et triés.
         """
-        staged_files = self.git_file_query_service.get_staged_files()
+        staged_files = self.git_files_gateway.get_staged_files()
 
         if not staged_files:
             raise FileSelectionError(
@@ -128,35 +130,34 @@ class FileSelectionService:
         resolved_paths: List[str] = []
 
         for raw_path in explicit_files:
-            # On convertit les chemins CLI (relatifs/absolus) en chemins repo-relatifs.
-            repo_path = self.git_path_resolver.to_repo_relative(raw_path)
 
             # On interdit les chemins qui sortiraient de la racine du repo (../..).
-            if self.git_path_resolver.is_outside_repo(repo_path):
+            if self.git_path_resolver.is_outside_repo(raw_path):
                 raise FileSelectionError(
                     f"Chemin en dehors du dépôt Git : {raw_path}"
                 )
 
+            # On convertit les chemins CLI (relatifs/absolus) en chemins repo-relatifs.
+            repo_path = self.git_path_resolver.to_repo_relative(raw_path)
+
             # Si c'est un dossier, on l'expanse récursivement.
-            if self.git_file_query_service.is_directory(repo_path):
-                files_in_dir = self.git_file_query_service.list_tracked_files_in_path(repo_path)
+            if self.git_files_gateway.is_directory(repo_path):
+                files_in_dir = self.git_files_gateway.list_tracked_files_in_path(repo_path)
                 if not files_in_dir:
                     warnings.append(
                         f"Dossier vide ou sans fichiers suivis : {raw_path}"
                     )
                     continue
 
-                for f in files_in_dir:
-                    resolved_paths.append(
-                        self.git_path_resolver.to_repo_relative(f)
-                    )
+                resolved_paths.extend(files_in_dir)
+
                 continue
 
             # À partir d'ici, on considère que repo_path désigne un fichier.
-            if not self.git_file_query_service.exists_in_worktree_or_index(repo_path):
+            if not self.git_files_gateway.exists_in_worktree_or_index(repo_path):
                 raise FileSelectionError(f"Fichier introuvable : {raw_path}")
 
-            if self.git_file_query_service.is_ignored(repo_path):
+            if self.git_files_gateway.is_ignored(repo_path):
                 raise FileSelectionError(
                     f"Fichier ignoré par Git (.gitignore) : {raw_path}"
                 )
