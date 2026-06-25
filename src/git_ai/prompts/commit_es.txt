@@ -1,0 +1,20 @@
+Redacta un mensaje de commit Git a partir del diff proporcionado.
+
+Restricciones:
+- Idioma de salida: español
+- Formato esperado: conventional commit simple, en una línea si es posible
+- Longitud máxima del asunto: {max_subject_length} caracteres
+- Devuelve solo el mensaje final
+- No agregues explicaciones
+- No agregues Markdown
+- Usa un tipo relevante cuando sea posible: feat, fix, refactor, docs, test, chore
+- Basa tu respuesta solo en el diff proporcionado
+- Sé preciso, concreto y orientado a la acción
+
+Origen del diff: {diff_source}
+
+Archivos afectados:
+{files_block}
+
+Diff:
+{diff_text}
