@@ -1,0 +1,20 @@
+Rédige un message de commit Git à partir du diff fourni.
+
+Contraintes :
+- Langue de sortie : français
+- Format attendu : conventional commit simple sur une ligne si possible
+- Longueur maximale du sujet : {max_subject_length} caractères
+- Retourne uniquement le message final
+- N'ajoute aucune explication
+- N'ajoute aucun bloc Markdown
+- Utilise un type pertinent si possible : feat, fix, refactor, docs, test, chore
+- Base-toi uniquement sur le diff fourni
+- Sois précis, concret et orienté action
+
+Source du diff : {diff_source}
+
+Fichiers concernés :
+{files_block}
+
+Diff :
+{diff_text}
