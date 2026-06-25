@@ -1,0 +1,127 @@
+from __future__ import annotations
+
+from git_ai.exceptions import ProviderResponseError
+from git_ai.models import CommitMessage, LLMRequest, LLMResponse, PromptRequest
+from git_ai.providers.base import LLMProvider
+from git_ai.services.prompt_service import PromptService
+
+
+class CommitMessageService:
+    """Orchestre prompt + provider + nettoyage final du message."""
+
+    def __init__(
+        self,
+        provider: LLMProvider,
+        prompt_service: PromptService,
+        temperature: float = 0.2,
+        max_tokens: int | None = 120,
+    ) -> None:
+        self._provider = provider
+        self._prompt_service = prompt_service
+        self._temperature = temperature
+        self._max_tokens = max_tokens
+
+    def generate(self, request: PromptRequest) -> CommitMessage:
+        """Produit un message de commit propre à partir d'un diff."""
+        if request.diff.is_empty:
+            raise ValueError("Cannot generate a commit message from an empty diff.")
+
+        prompt_payload = self._prompt_service.build_commit_prompt(request)
+
+        llm_request = LLMRequest(
+            prompt=prompt_payload.user_prompt,
+            system_prompt=prompt_payload.system_prompt,
+            temperature=self._temperature,
+            max_tokens=self._max_tokens,
+        )
+
+        llm_response = self._provider.generate(llm_request)
+        commit_text = self._sanitize_response(
+            response=llm_response,
+            max_subject_length=request.max_subject_length,
+        )
+
+        return CommitMessage(
+            text=commit_text,
+            language=request.language,
+        )
+
+    def _sanitize_response(
+        self,
+        response: LLMResponse,
+        max_subject_length: int,
+    ) -> str:
+        if response.is_empty:
+            raise ProviderResponseError("The provider returned an empty commit message.")
+
+        text = response.text.strip()
+        text = self._strip_code_fences(text)
+        text = self._strip_known_prefixes(text)
+
+        if not text:
+            raise ProviderResponseError("The commit message is empty after sanitization.")
+
+        lines = [line.rstrip() for line in text.splitlines()]
+        lines = self._drop_leading_empty_lines(lines)
+
+        if not lines:
+            raise ProviderResponseError("The commit message has no usable content.")
+
+        # Le sujet est toujours la première ligne utile.
+        subject = self._normalize_subject(lines[0])
+
+        if not subject:
+            raise ProviderResponseError("The commit subject is empty.")
+
+        if len(subject) > max_subject_length:
+            subject = subject[:max_subject_length].rstrip(" .:-")
+
+        # V1 : si le modèle renvoie un corps, on le conserve, mais on nettoie les lignes vides.
+        body_lines = [line.strip() for line in lines[1:] if line.strip()]
+
+        if not body_lines:
+            return subject
+
+        body = "\n".join(body_lines)
+        return f"{subject}\n\n{body}"
+
+    def _strip_code_fences(self, text: str) -> str:
+        lines = text.splitlines()
+        cleaned_lines = [
+            line for line in lines if line.strip() not in {"```", "```txt", "```text"}
+        ]
+        return "\n".join(cleaned_lines).strip()
+
+    def _strip_known_prefixes(self, text: str) -> str:
+        prefixes = (
+            "commit message:",
+            "message de commit :",
+            "message de commit:",
+            "mensaje de commit:",
+            "mensagem de commit:",
+        )
+
+        stripped = text.strip()
+        lowered = stripped.lower()
+
+        for prefix in prefixes:
+            if lowered.startswith(prefix):
+                return stripped[len(prefix):].strip()
+
+        return stripped
+
+    def _drop_leading_empty_lines(self, lines: list[str]) -> list[str]:
+        index = 0
+        while index < len(lines) and not lines[index].strip():
+            index += 1
+        return lines
+
+    def _normalize_subject(self, subject: str) -> str:
+        # Nettoyage léger du sujet généré.
+        subject = subject.strip().strip('"').strip("'")
+        subject = " ".join(subject.split())
+
+        if subject.endswith("."):
+            subject = subject[:-1].rstrip()
+
+        return subject

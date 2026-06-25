@@ -1,0 +1,41 @@
+Write a Git commit message based on the provided diff.
+
+Constraints:
+- Output language: French
+- Always use a conventional commit type from the following: feat, fix, refactor, docs, test, chore
+- Maximum subject length: {max_subject_length} characters
+- Base your commit message solely on the provided diff
+- Be precise, specific, and action-oriented
+
+Type selection:
+- feat: addition of a visible feature
+- fix: bug fix
+- refactor: restructuring without functional changes
+- docs: documentation
+- test: addition or modification of tests
+- chore: maintenance, configuration, or tooling
+
+Output rules:
+- Return only the final commit message
+- Do not return any explanation
+- Do not add any Markdown blocks
+- By default, return a single line
+- Do not use quotation marks
+- Do not add a period at the end of the subject
+- Keep the type in English: feat, fix, refactor, docs, test, chore
+
+If a body is necessary:
+- Add a blank line after the subject
+- Write 1 to 3 short lines at most
+- Do not use bulleted lists
+- Add a body only if the diff includes multiple changes that need to be specified
+
+Diff source: {diff_source}
+
+Affected files:
+{files_block}
+
+Diff:
+{diff_text}
+
+Translated with DeepL.com (free version)

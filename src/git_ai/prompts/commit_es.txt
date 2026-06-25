@@ -1,0 +1,41 @@
+Redacta un mensaje de commit de Git a partir del diff proporcionado.
+
+Restricciones:
+- Idioma de salida: francés
+- Utiliza siempre un tipo de commit convencional de entre los siguientes: feat, fix, refactor, docs, test, chore
+- Longitud máxima del asunto: {max_subject_length} caracteres
+- Básate únicamente en el diff proporcionado
+- Sé preciso, concreto y orientado a la acción
+
+Elección del tipo:
+- feat: incorporación de una funcionalidad visible
+- fix: corrección de un error
+- refactor: reestructuración sin cambios funcionales
+- docs: documentación
+- test: incorporación o modificación de pruebas
+- chore: mantenimiento, configuración o herramientas
+
+Reglas de salida:
+- Devuelve únicamente el mensaje de commit final
+- No devuelvas ninguna explicación
+- No añadas ningún bloque de Markdown
+- Por defecto, devuelve una sola línea
+- No utilices comillas
+- No añadas un punto al final del asunto
+- Mantén el tipo en inglés: feat, fix, refactor, docs, test, chore
+
+Si es necesario incluir un cuerpo:
+- Añade una línea en blanco después del asunto
+- Escribe entre 1 y 3 líneas cortas como máximo
+- No utilices listas con viñetas
+- Añade un cuerpo solo si el diff incluye varios cambios que convenga especificar
+
+Fuente del diff: {diff_source}
+
+Archivos afectados:
+{files_block}
+
+Diff:
+{diff_text}
+
+Traducción realizada con la versión gratuita del traductor DeepL.com
