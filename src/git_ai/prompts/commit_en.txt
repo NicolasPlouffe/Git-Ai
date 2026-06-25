@@ -1,0 +1,20 @@
+Write a Git commit message from the provided diff.
+
+Constraints:
+- Output language: English
+- Expected format: simple conventional commit, one line if possible
+- Maximum subject length: {max_subject_length} characters
+- Return only the final message
+- Do not add explanations
+- Do not add Markdown
+- Use a relevant type when possible: feat, fix, refactor, docs, test, chore
+- Use only the provided diff
+- Be precise, concrete, and action-oriented
+
+Diff source: {diff_source}
+
+Affected files:
+{files_block}
+
+Diff:
+{diff_text}
