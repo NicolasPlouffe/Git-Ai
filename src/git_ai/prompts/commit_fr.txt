@@ -2,14 +2,33 @@ Rédige un message de commit Git à partir du diff fourni.
 
 Contraintes :
 - Langue de sortie : français
-- Format attendu : conventional commit simple sur une ligne si possible
+- Utilise toujours un type conventional commit parmi : feat, fix, refactor, docs, test, chore
 - Longueur maximale du sujet : {max_subject_length} caractères
-- Retourne uniquement le message final
-- N'ajoute aucune explication
-- N'ajoute aucun bloc Markdown
-- Utilise un type pertinent si possible : feat, fix, refactor, docs, test, chore
 - Base-toi uniquement sur le diff fourni
 - Sois précis, concret et orienté action
+
+Choix du type :
+- feat : ajout de fonctionnalité visible
+- fix : correction de bug
+- refactor : restructuration sans changement fonctionnel
+- docs : documentation
+- test : ajout ou modification de tests
+- chore : maintenance, configuration ou outillage
+
+Règles de sortie :
+- Retourne uniquement le message de commit final
+- Ne retourne aucune explication
+- N'ajoute aucun bloc Markdown
+- Par défaut, retourne une seule ligne
+- N'utilise pas de guillemets
+- N'ajoute pas de point final à la fin du sujet
+- Garde le type en anglais : feat, fix, refactor, docs, test, chore
+
+Si un corps est nécessaire :
+- ajoute une ligne vide après le sujet
+- écris 1 à 3 lignes courtes maximum
+- n'utilise pas de liste à puces
+- ajoute un corps seulement si le diff couvre plusieurs changements utiles à préciser
 
 Source du diff : {diff_source}
 
