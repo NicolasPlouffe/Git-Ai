@@ -1,0 +1,1 @@
+from .commit_message_service import CommitMessageService  # facultatif mais pratique
