@@ -188,3 +188,123 @@ def test_generate_raises_on_empty_provider_response() -> None:
 
     with pytest.raises(ProviderResponseError):
         service.generate(request)
+
+def test_generate_strips_leading_empty_lines() -> None:
+    class EmptyLinesProvider:
+        @property
+        def info(self) -> ProviderInfo:
+            return ProviderInfo(name="fake")
+
+        def generate(self, request):
+            return LLMResponse(text="\n\nfeat: add prompt builder")
+
+    service = CommitMessageService(
+        provider=EmptyLinesProvider(),
+        prompt_service=FakePromptService(),
+    )
+
+    request = PromptRequest(
+        diff=GitDiff(
+            text="diff --git a/a.py b/a.py",
+            files=("a.py",),
+            source=DiffSource.STAGED,
+        ),
+        language=CommitLanguage.ENGLISH,
+        max_subject_length=72,
+    )
+
+    result = service.generate(request)
+
+    assert result.text == "feat: add prompt builder"
+
+
+def test_generate_strips_quotes_from_subject() -> None:
+    class QuotesProvider:
+        @property
+        def info(self) -> ProviderInfo:
+            return ProviderInfo(name="fake")
+
+        def generate(self, request):
+            return LLMResponse(text='"feat: add prompt builder"')
+
+    service = CommitMessageService(
+        provider=QuotesProvider(),
+        prompt_service=FakePromptService(),
+    )
+
+    request = PromptRequest(
+        diff=GitDiff(
+            text="diff --git a/a.py b/a.py",
+            files=("a.py",),
+            source=DiffSource.STAGED,
+        ),
+        language=CommitLanguage.ENGLISH,
+        max_subject_length=72,
+    )
+
+    result = service.generate(request)
+
+    assert result.text == "feat: add prompt builder"
+
+
+def test_generate_normalizes_body_by_removing_extra_blank_lines() -> None:
+    class NoisyBodyProvider:
+        @property
+        def info(self) -> ProviderInfo:
+            return ProviderInfo(name="fake")
+
+        def generate(self, request):
+            return LLMResponse(
+                text="feat: add prompt builder\n\n\nAdd prompt loading service.\n\nNormalize commit output.\n"
+            )
+
+    service = CommitMessageService(
+        provider=NoisyBodyProvider(),
+        prompt_service=FakePromptService(),
+    )
+
+    request = PromptRequest(
+        diff=GitDiff(
+            text="diff --git a/a.py b/a.py",
+            files=("a.py",),
+            source=DiffSource.STAGED,
+        ),
+        language=CommitLanguage.ENGLISH,
+        max_subject_length=72,
+    )
+
+    result = service.generate(request)
+
+    assert result.text == (
+        "feat: add prompt builder\n\n"
+        "Add prompt loading service.\n"
+        "Normalize commit output."
+    )
+
+
+def test_generate_raises_when_sanitization_removes_all_content() -> None:
+    class PrefixOnlyProvider:
+        @property
+        def info(self) -> ProviderInfo:
+            return ProviderInfo(name="fake")
+
+        def generate(self, request):
+            return LLMResponse(text="Commit message:")
+
+    service = CommitMessageService(
+        provider=PrefixOnlyProvider(),
+        prompt_service=FakePromptService(),
+    )
+
+    request = PromptRequest(
+        diff=GitDiff(
+            text="diff --git a/a.py b/a.py",
+            files=("a.py",),
+            source=DiffSource.STAGED,
+        ),
+        language=CommitLanguage.ENGLISH,
+        max_subject_length=72,
+    )
+
+    with pytest.raises(ProviderResponseError):
+        service.generate(request)
