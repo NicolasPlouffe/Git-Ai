@@ -1,8 +1,12 @@
-import pytest
+from __future__ import annotations
+
 from pathlib import Path
 
-from git_ai.models import CommitLanguage, DiffSource, GitDiff, PromptRequest
+import pytest
+
+from git_ai.models import CommitLanguage, DiffSource
 from git_ai.services.prompt_service import PromptService
+from tests.conftest import make_prompt_request
 
 
 @pytest.mark.parametrize(
@@ -23,12 +27,10 @@ def test_build_commit_prompt_loads_template_for_each_language(
         (tmp_path / name).write_text(f"{name}\n{{diff_text}}", encoding="utf-8")
 
     service = PromptService(prompts_dir=tmp_path)
-    request = PromptRequest(
-        diff=GitDiff(
-            text="diff --git a/app.py b/app.py",
-            files=("app.py",),
-            source=DiffSource.STAGED,
-        ),
+    request = make_prompt_request(
+        diff_text="diff --git a/app.py b/app.py",
+        files=("app.py",),
+        source=DiffSource.STAGED,
         language=language,
         max_subject_length=72,
     )
@@ -48,12 +50,10 @@ def test_build_commit_prompt_sets_language_metadata_for_portuguese(
     )
 
     service = PromptService(prompts_dir=tmp_path)
-    request = PromptRequest(
-        diff=GitDiff(
-            text="diff --git a/app.py b/app.py",
-            files=("app.py",),
-            source=DiffSource.FILES,
-        ),
+    request = make_prompt_request(
+        diff_text="diff --git a/app.py b/app.py",
+        files=("app.py",),
+        source=DiffSource.FILES,
         language=CommitLanguage.PORTUGUESE,
         max_subject_length=60,
     )
@@ -68,12 +68,10 @@ def test_build_commit_prompt_sets_language_metadata_for_portuguese(
 def test_build_commit_prompt_raises_if_template_is_missing(tmp_path: Path) -> None:
     service = PromptService(prompts_dir=tmp_path)
 
-    request = PromptRequest(
-        diff=GitDiff(
-            text="diff --git a/app.py b/app.py",
-            files=("app.py",),
-            source=DiffSource.STAGED,
-        ),
+    request = make_prompt_request(
+        diff_text="diff --git a/app.py b/app.py",
+        files=("app.py",),
+        source=DiffSource.STAGED,
         language=CommitLanguage.FRENCH,
         max_subject_length=72,
     )
