@@ -57,6 +57,7 @@ class CommitMessageService:
         text = response.text.strip()
         text = self._strip_code_fences(text)
         text = self._strip_known_prefixes(text)
+        text = self._strip_prompt_echo(text)
 
         if not text:
             raise ProviderResponseError("The commit message is empty after sanitization.")
@@ -125,17 +126,31 @@ class CommitMessageService:
 
         return subject
 
-    def _truncate_subject(self, subject: str, max_subject_length: int) -> str:
-        if len(subject) <= max_subject_length:
-            return subject
+    def _trim_incomplete_ending(self, subject: str) -> str:
+        weak_endings = {
+            "pour",
+            "avec",
+            "sans",
+            "via",
+            "en",
+            "sur",
+            "de",
+            "d",
+        }
 
-        truncated = subject[:max_subject_length].rstrip(" .:-")
+        cleaned = subject.strip()
 
-        last_space = truncated.rfind(" ")
-        if last_space > 0:
-            truncated = truncated[:last_space].rstrip(" .:-")
+        while cleaned:
+            last_word = cleaned.split()[-1].lower()
+            if last_word not in weak_endings:
+                return cleaned
 
-        return truncated or subject[:max_subject_length].rstrip(" .:-")
+            last_space = cleaned.rfind(" ")
+            if last_space <= 0:
+                return ""
+            cleaned = cleaned[:last_space].rstrip(" .:-")
+
+        return cleaned
 
     def _normalize_body_lines(self, lines: list[str]) -> list[str]:
         cleaned_lines: list[str] = []
@@ -158,3 +173,74 @@ class CommitMessageService:
             cleaned_lines.pop()
 
         return cleaned_lines
+
+    def _truncate_subject(self, subject: str, max_subject_length: int) -> str:
+        if len(subject) <= max_subject_length:
+            return subject
+
+        truncated = subject[:max_subject_length].rstrip(" .:-")
+
+        last_space = truncated.rfind(" ")
+        if last_space > 0:
+            truncated = truncated[:last_space].rstrip(" .:-")
+
+        truncated = self._trim_incomplete_ending(truncated)
+
+        if truncated:
+            return truncated
+
+        fallback = subject[:max_subject_length].rstrip(" .:-")
+        return self._trim_incomplete_ending(fallback) or fallback
+
+    def _trim_incomplete_ending(self, subject: str) -> str:
+        weak_endings = {
+            "pour",
+            "avec",
+            "sans",
+            "via",
+            "en",
+            "sur",
+            "de",
+            "d",
+        }
+
+        cleaned = subject.strip()
+
+        while cleaned:
+            last_word = cleaned.split()[-1].lower()
+            if last_word not in weak_endings:
+                return cleaned
+
+            last_space = cleaned.rfind(" ")
+            if last_space <= 0:
+                return ""
+            cleaned = cleaned[:last_space].rstrip(" .:-")
+
+        return cleaned
+
+    def _strip_prompt_echo(self, text: str) -> str:
+        markers = (
+            "\nRédige un message de commit",
+            "\nRedige un message de commit",
+            "\nContraintes :",
+            "\nChoix du type :",
+            "\nFormat attendu :",
+            "\nRègles de sortie :",
+            "\nRegles de sortie :",
+            "\nSi un corps est nécessaire :",
+            "\nSi un corps est necessaire :",
+            "\nExemples de bons sujets :",
+            "\nSource du diff :",
+            "\nFichiers concernés :",
+            "\nFichiers concernes :",
+            "\nDiff :",
+        )
+
+        cleaned = text.strip()
+
+        for marker in markers:
+            index = cleaned.find(marker)
+            if index != -1:
+                cleaned = cleaned[:index].rstrip()
+
+        return cleaned
