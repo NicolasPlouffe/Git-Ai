@@ -395,7 +395,7 @@ def test_generate_removes_backticks_from_subject() -> None:
     assert result.text == "feat(cli): ajouter la commande commit"
 
 
-def test_generate_truncates_subject_without_cutting_last_word() -> None:
+def test_generate_truncates_subject_and_removes_incomplete_ending() -> None:
     provider = DummyProvider(
         "feat(cli): ajouter la commande de commit avec interface utilisateur complete"
     )
@@ -411,7 +411,7 @@ def test_generate_truncates_subject_without_cutting_last_word() -> None:
 
     result = service.generate(request)
 
-    assert result.text == "feat(cli): ajouter la commande de commit avec"
+    assert result.text == "feat(cli): ajouter la commande de commit"
     assert len(result.text) <= 49
 
 
@@ -549,3 +549,38 @@ def test_generate_truncates_subject_and_removes_incomplete_ending() -> None:
     result = service.generate(request)
 
     assert result.text == "feat(cli): ajouter la commande de commit"
+
+    def test_generate_removes_prompt_echo_from_response() -> None:
+        class PromptEchoProvider:
+            @property
+            def info(self) -> ProviderInfo:
+                return ProviderInfo(name="fake")
+
+            def generate(self, request):
+                return LLMResponse(
+                    text=(
+                        "refactor(cli): nettoyer la sortie du provider\n"
+                        "Rédige un message de commit Git à partir du diff fourni.\n"
+                        "Contraintes :\n"
+                        "- Langue de sortie : français\n"
+                    )
+                )
+
+        service = CommitMessageService(
+            provider=PromptEchoProvider(),
+            prompt_service=FakePromptService(),
+        )
+
+        request = PromptRequest(
+            diff=GitDiff(
+                text="diff --git a/a.py b/a.py",
+                files=("a.py",),
+                source=DiffSource.STAGED,
+            ),
+            language=CommitLanguage.FRENCH,
+            max_subject_length=72,
+        )
+
+        result = service.generate(request)
+
+        assert result.text == "refactor(cli): nettoyer la sortie du provider"
