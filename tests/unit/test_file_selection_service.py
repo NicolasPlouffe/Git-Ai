@@ -1,3 +1,7 @@
+from __future__ import annotations
+
+import pytest
+
 from git_ai.services.file_selection_service import (
     FileSelectionError,
     FileSelectionService,
@@ -12,12 +16,12 @@ class FakeGitFilesGateway:
     On configure ses attributs dans chaque test pour simuler les réponses Git.
     """
 
-    def __init__(self):
-        self._staged_files = []
-        self._directories = set()
-        self._tracked_files_by_dir = {}
-        self._existing_paths = set()
-        self._ignored_paths = set()
+    def __init__(self) -> None:
+        self._staged_files: list[str] = []
+        self._directories: set[str] = set()
+        self._tracked_files_by_dir: dict[str, list[str]] = {}
+        self._existing_paths: set[str] = set()
+        self._ignored_paths: set[str] = set()
 
     def set_staged_files(self, files: list[str]) -> None:
         self._staged_files = files
@@ -58,8 +62,8 @@ class FakeGitPathResolver:
     et ne fait qu'une normalisation identitaire.
     """
 
-    def __init__(self):
-        self._outside_paths = set()
+    def __init__(self) -> None:
+        self._outside_paths: set[str] = set()
 
     def set_outside_paths(self, paths: list[str]) -> None:
         self._outside_paths = set(paths)
@@ -71,7 +75,7 @@ class FakeGitPathResolver:
         return path in self._outside_paths
 
 
-def test_select_from_staged_ok():
+def test_select_from_staged_ok() -> None:
     gateway = FakeGitFilesGateway()
     resolver = FakeGitPathResolver()
 
@@ -87,7 +91,7 @@ def test_select_from_staged_ok():
     assert result.warnings == []
 
 
-def test_select_from_staged_empty_raises():
+def test_select_from_staged_empty_raises() -> None:
     gateway = FakeGitFilesGateway()
     resolver = FakeGitPathResolver()
 
@@ -95,16 +99,11 @@ def test_select_from_staged_empty_raises():
 
     service = FileSelectionService(gateway, resolver)
 
-    try:
+    with pytest.raises(FileSelectionError, match="Aucun fichier stagé"):
         service.select_files()
-    except FileSelectionError as exc:
-        msg = str(exc)
-        assert "Aucun fichier stagé" in msg
-    else:
-        assert False, "FileSelectionError attendu quand aucun fichier n'est stagé"
 
 
-def test_explicit_files_ok_mixed_files():
+def test_explicit_files_ok_mixed_files() -> None:
     gateway = FakeGitFilesGateway()
     resolver = FakeGitPathResolver()
 
@@ -120,7 +119,7 @@ def test_explicit_files_ok_mixed_files():
     assert result.warnings == []
 
 
-def test_explicit_files_outside_repo_raises():
+def test_explicit_files_outside_repo_raises() -> None:
     gateway = FakeGitFilesGateway()
     resolver = FakeGitPathResolver()
 
@@ -128,31 +127,21 @@ def test_explicit_files_outside_repo_raises():
 
     service = FileSelectionService(gateway, resolver)
 
-    try:
+    with pytest.raises(FileSelectionError, match="en dehors du dépôt Git"):
         service.select_files(explicit_files=["../secret.txt"])
-    except FileSelectionError as exc:
-        msg = str(exc)
-        assert "en dehors du dépôt Git" in msg
-    else:
-        assert False, "FileSelectionError attendu pour un chemin hors dépôt"
 
 
-def test_explicit_file_missing_raises():
+def test_explicit_file_missing_raises() -> None:
     gateway = FakeGitFilesGateway()
     resolver = FakeGitPathResolver()
 
     service = FileSelectionService(gateway, resolver)
 
-    try:
+    with pytest.raises(FileSelectionError, match="Fichier introuvable"):
         service.select_files(explicit_files=["src/missing.py"])
-    except FileSelectionError as exc:
-        msg = str(exc)
-        assert "Fichier introuvable" in msg
-    else:
-        assert False, "FileSelectionError attendu pour fichier introuvable"
 
 
-def test_explicit_file_ignored_raises():
+def test_explicit_file_ignored_raises() -> None:
     gateway = FakeGitFilesGateway()
     resolver = FakeGitPathResolver()
 
@@ -161,16 +150,11 @@ def test_explicit_file_ignored_raises():
 
     service = FileSelectionService(gateway, resolver)
 
-    try:
+    with pytest.raises(FileSelectionError, match="Fichier ignoré par Git"):
         service.select_files(explicit_files=["secret.env"])
-    except FileSelectionError as exc:
-        msg = str(exc)
-        assert "Fichier ignoré par Git" in msg
-    else:
-        assert False, "FileSelectionError attendu pour fichier ignoré"
 
 
-def test_explicit_directory_expands_tracked_files():
+def test_explicit_directory_expands_tracked_files() -> None:
     gateway = FakeGitFilesGateway()
     resolver = FakeGitPathResolver()
 
@@ -186,7 +170,7 @@ def test_explicit_directory_expands_tracked_files():
     assert result.warnings == []
 
 
-def test_explicit_directory_empty_adds_warning_and_may_fail():
+def test_explicit_directory_empty_adds_warning_and_may_fail() -> None:
     gateway = FakeGitFilesGateway()
     resolver = FakeGitPathResolver()
 
@@ -195,25 +179,19 @@ def test_explicit_directory_empty_adds_warning_and_may_fail():
 
     service = FileSelectionService(gateway, resolver)
 
-    try:
+    with pytest.raises(FileSelectionError, match="aucun fichier valide"):
         service.select_files(explicit_files=["empty"])
-    except FileSelectionError as exc:
-        msg = str(exc)
-        assert "aucun fichier valide" in msg
-    else:
-        assert False, "FileSelectionError attendu si aucun fichier n'est retenu"
 
 
-def test_explicit_all_invalid_raises():
+def test_explicit_all_invalid_raises() -> None:
     gateway = FakeGitFilesGateway()
     resolver = FakeGitPathResolver()
 
     service = FileSelectionService(gateway, resolver)
 
-    try:
+    with pytest.raises(FileSelectionError) as exc_info:
         service.select_files(explicit_files=["does_not_exist.py"])
-    except FileSelectionError as exc:
-        msg = str(exc)
-        assert "Fichier introuvable" in msg or "aucun fichier valide" in msg
-    else:
-        assert False, "FileSelectionError attendu quand aucun chemin n'est valide"
+
+    assert "Fichier introuvable" in str(exc_info.value) or "aucun fichier valide" in str(
+        exc_info.value
+    )
