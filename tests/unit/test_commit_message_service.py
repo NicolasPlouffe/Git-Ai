@@ -1,5 +1,8 @@
+from __future__ import annotations
+
 import pytest
 
+from git_ai.exceptions import ProviderResponseError
 from git_ai.models import (
     CommitLanguage,
     DiffSource,
@@ -10,15 +13,17 @@ from git_ai.models import (
     PromptRequest,
     ProviderInfo,
 )
-from git_ai.exceptions import ProviderResponseError
 from git_ai.services.commit_message_service import CommitMessageService
+from tests.conftest import make_prompt_request
+from tests.unit.fakes import DummyProvider, DummyPromptService
+
 
 class FakeProvider:
     @property
     def info(self) -> ProviderInfo:
         return ProviderInfo(name="fake")
 
-    def generate(self, request):
+    def generate(self, request: LLMRequest) -> LLMResponse:
         return LLMResponse(text="Commit message:\nfeat: add prompt builder")
 
 
@@ -75,7 +80,7 @@ def test_generate_strips_markdown_fences() -> None:
         def info(self) -> ProviderInfo:
             return ProviderInfo(name="fake")
 
-        def generate(self, request):
+        def generate(self, request: LLMRequest) -> LLMResponse:
             return LLMResponse(text="```text\nfeat: add prompt builder\n```")
 
     service = CommitMessageService(
@@ -106,7 +111,7 @@ def test_generate_truncates_long_subject() -> None:
         def info(self) -> ProviderInfo:
             return ProviderInfo(name="fake")
 
-        def generate(self, request):
+        def generate(self, request: LLMRequest) -> LLMResponse:
             return LLMResponse(text=long_subject)
 
     service = CommitMessageService(
@@ -128,15 +133,20 @@ def test_generate_truncates_long_subject() -> None:
 
     assert len(result.subject) <= 20
 
+
 def test_generate_keeps_clean_body() -> None:
     class BodyProvider:
         @property
         def info(self) -> ProviderInfo:
             return ProviderInfo(name="fake")
 
-        def generate(self, request):
+        def generate(self, request: LLMRequest) -> LLMResponse:
             return LLMResponse(
-                text="feat: add prompt builder\n\nAdd prompt loading service.\nNormalize commit output."
+                text=(
+                    "feat: add prompt builder\n\n"
+                    "Add prompt loading service.\n"
+                    "Normalize commit output."
+                )
             )
 
     service = CommitMessageService(
@@ -169,7 +179,7 @@ def test_generate_raises_on_empty_provider_response() -> None:
         def info(self) -> ProviderInfo:
             return ProviderInfo(name="fake")
 
-        def generate(self, request):
+        def generate(self, request: LLMRequest) -> LLMResponse:
             return LLMResponse(text="   ")
 
     service = CommitMessageService(
@@ -190,13 +200,14 @@ def test_generate_raises_on_empty_provider_response() -> None:
     with pytest.raises(ProviderResponseError):
         service.generate(request)
 
+
 def test_generate_strips_leading_empty_lines() -> None:
     class EmptyLinesProvider:
         @property
         def info(self) -> ProviderInfo:
             return ProviderInfo(name="fake")
 
-        def generate(self, request):
+        def generate(self, request: LLMRequest) -> LLMResponse:
             return LLMResponse(text="\n\nfeat: add prompt builder")
 
     service = CommitMessageService(
@@ -225,7 +236,7 @@ def test_generate_strips_quotes_from_subject() -> None:
         def info(self) -> ProviderInfo:
             return ProviderInfo(name="fake")
 
-        def generate(self, request):
+        def generate(self, request: LLMRequest) -> LLMResponse:
             return LLMResponse(text='"feat: add prompt builder"')
 
     service = CommitMessageService(
@@ -254,9 +265,13 @@ def test_generate_normalizes_body_by_removing_extra_blank_lines() -> None:
         def info(self) -> ProviderInfo:
             return ProviderInfo(name="fake")
 
-        def generate(self, request):
+        def generate(self, request: LLMRequest) -> LLMResponse:
             return LLMResponse(
-                text="feat: add prompt builder\n\n\nAdd prompt loading service.\n\nNormalize commit output.\n"
+                text=(
+                    "feat: add prompt builder\n\n\n"
+                    "Add prompt loading service.\n\n"
+                    "Normalize commit output.\n"
+                )
             )
 
     service = CommitMessageService(
@@ -289,7 +304,7 @@ def test_generate_raises_when_sanitization_removes_all_content() -> None:
         def info(self) -> ProviderInfo:
             return ProviderInfo(name="fake")
 
-        def generate(self, request):
+        def generate(self, request: LLMRequest) -> LLMResponse:
             return LLMResponse(text="Commit message:")
 
     service = CommitMessageService(
@@ -311,35 +326,7 @@ def test_generate_raises_when_sanitization_removes_all_content() -> None:
         service.generate(request)
 
 
-class DummyProvider:
-    def __init__(self, response_text: str) -> None:
-        self._response_text = response_text
-        self.calls: list[LLMRequest] = []
-
-    def generate(self, request: LLMRequest) -> LLMResponse:
-        self.calls.append(request)
-        return LLMResponse(text=self._response_text)
-
-
-class DummyPromptService:
-    def build_commit_prompt(self, request: PromptRequest) -> PromptPayload:
-        return PromptPayload(
-            system_prompt="system",
-            user_prompt="user",
-            metadata={"language": request.language.value},
-        )
-
-
-def make_request(diff_text: str = "diff --git a/file.py b/file.py") -> PromptRequest:
-    return PromptRequest(
-        diff=GitDiff(
-            text=diff_text,
-            files=("src/git_ai/cli.py",),
-            source=DiffSource.STAGED,
-        ),
-        language=CommitLanguage.FRENCH,
-        max_subject_length=50,
-    )
+# --- Partie utilisant DummyProvider/DummyPromptService + make_prompt_request ---
 
 
 def test_generate_raises_when_diff_is_empty() -> None:
@@ -367,7 +354,7 @@ def test_generate_raises_when_provider_returns_empty_message() -> None:
     service = CommitMessageService(provider=provider, prompt_service=prompt_service)
 
     with pytest.raises(ProviderResponseError, match="empty commit message"):
-        service.generate(make_request())
+        service.generate(make_prompt_request())
 
 
 def test_generate_removes_code_fences_and_known_prefix() -> None:
@@ -380,7 +367,7 @@ def test_generate_removes_code_fences_and_known_prefix() -> None:
     prompt_service = DummyPromptService()
     service = CommitMessageService(provider=provider, prompt_service=prompt_service)
 
-    result = service.generate(make_request())
+    result = service.generate(make_prompt_request())
 
     assert result.text == "feat(cli): ajouter la commande de commit"
 
@@ -390,23 +377,20 @@ def test_generate_removes_backticks_from_subject() -> None:
     prompt_service = DummyPromptService()
     service = CommitMessageService(provider=provider, prompt_service=prompt_service)
 
-    result = service.generate(make_request())
+    result = service.generate(make_prompt_request())
 
     assert result.text == "feat(cli): ajouter la commande commit"
 
 
-def test_generate_truncates_subject_and_removes_incomplete_ending() -> None:
+def test_generate_truncates_subject_and_removes_incomplete_ending_dummy() -> None:
     provider = DummyProvider(
         "feat(cli): ajouter la commande de commit avec interface utilisateur complete"
     )
     prompt_service = DummyPromptService()
     service = CommitMessageService(provider=provider, prompt_service=prompt_service)
 
-    request = make_request()
-    request = PromptRequest(
-        diff=request.diff,
-        language=request.language,
-        max_subject_length=49,
+    request = make_prompt_request(
+        max_subject_length=49,  # attention: adapter au nom exact de ton champ
     )
 
     result = service.generate(request)
@@ -415,7 +399,7 @@ def test_generate_truncates_subject_and_removes_incomplete_ending() -> None:
     assert len(result.text) <= 49
 
 
-def test_generate_keeps_clean_body_when_present() -> None:
+def test_generate_keeps_clean_body_when_present_dummy() -> None:
     provider = DummyProvider(
         "feat(cli): ajouter la commande de commit\n\n"
         "- ajoute le flux principal\n"
@@ -425,7 +409,7 @@ def test_generate_keeps_clean_body_when_present() -> None:
     prompt_service = DummyPromptService()
     service = CommitMessageService(provider=provider, prompt_service=prompt_service)
 
-    result = service.generate(make_request())
+    result = service.generate(make_prompt_request())
 
     assert result.text == (
         "feat(cli): ajouter la commande de commit\n\n"
@@ -444,7 +428,7 @@ def test_generate_passes_prompt_to_provider() -> None:
         max_tokens=80,
     )
 
-    service.generate(make_request())
+    service.generate(make_prompt_request())
 
     assert len(provider.calls) == 1
     llm_request = provider.calls[0]
@@ -460,11 +444,13 @@ def test_generate_removes_backticks_in_body() -> None:
         def info(self) -> ProviderInfo:
             return ProviderInfo(name="fake")
 
-        def generate(self, request):
+        def generate(self, request: LLMRequest) -> LLMResponse:
             return LLMResponse(
-                text="feat: add prompt builder\n\n"
-                     "Use `PromptService` to build prompts.\n"
-                     "Normalize `CommitMessageService` output.\n"
+                text=(
+                    "feat: add prompt builder\n\n"
+                    "Use `PromptService` to build prompts.\n"
+                    "Normalize `CommitMessageService` output.\n"
+                )
             )
 
     service = CommitMessageService(
@@ -490,13 +476,14 @@ def test_generate_removes_backticks_in_body() -> None:
         "Normalize CommitMessageService output."
     )
 
+
 def test_truncate_subject_never_returns_empty() -> None:
     class ShortLimitProvider:
         @property
         def info(self) -> ProviderInfo:
             return ProviderInfo(name="fake")
 
-        def generate(self, request):
+        def generate(self, request: LLMRequest) -> LLMResponse:
             return LLMResponse(text="feat: add prompt builder")
 
     service = CommitMessageService(
@@ -520,15 +507,18 @@ def test_truncate_subject_never_returns_empty() -> None:
     assert len(result.text) <= 5
 
 
-def test_generate_truncates_subject_and_removes_incomplete_ending() -> None:
+def test_generate_truncates_subject_and_removes_incomplete_ending_weak() -> None:
     class WeakEndingProvider:
         @property
         def info(self) -> ProviderInfo:
             return ProviderInfo(name="fake")
 
-        def generate(self, request):
+        def generate(self, request: LLMRequest) -> LLMResponse:
             return LLMResponse(
-                text="feat(cli): ajouter la commande de commit avec interface utilisateur complete"
+                text=(
+                    "feat(cli): ajouter la commande de commit avec interface "
+                    "utilisateur complete"
+                )
             )
 
     service = CommitMessageService(
@@ -550,37 +540,38 @@ def test_generate_truncates_subject_and_removes_incomplete_ending() -> None:
 
     assert result.text == "feat(cli): ajouter la commande de commit"
 
-    def test_generate_removes_prompt_echo_from_response() -> None:
-        class PromptEchoProvider:
-            @property
-            def info(self) -> ProviderInfo:
-                return ProviderInfo(name="fake")
 
-            def generate(self, request):
-                return LLMResponse(
-                    text=(
-                        "refactor(cli): nettoyer la sortie du provider\n"
-                        "Rédige un message de commit Git à partir du diff fourni.\n"
-                        "Contraintes :\n"
-                        "- Langue de sortie : français\n"
-                    )
+def test_generate_removes_prompt_echo_from_response() -> None:
+    class PromptEchoProvider:
+        @property
+        def info(self) -> ProviderInfo:
+            return ProviderInfo(name="fake")
+
+        def generate(self, request: LLMRequest) -> LLMResponse:
+            return LLMResponse(
+                text=(
+                    "refactor(cli): nettoyer la sortie du provider\n"
+                    "Rédige un message de commit Git à partir du diff fourni.\n"
+                    "Contraintes :\n"
+                    "- Langue de sortie : français\n"
                 )
+            )
 
-        service = CommitMessageService(
-            provider=PromptEchoProvider(),
-            prompt_service=FakePromptService(),
-        )
+    service = CommitMessageService(
+        provider=PromptEchoProvider(),
+        prompt_service=FakePromptService(),
+    )
 
-        request = PromptRequest(
-            diff=GitDiff(
-                text="diff --git a/a.py b/a.py",
-                files=("a.py",),
-                source=DiffSource.STAGED,
-            ),
-            language=CommitLanguage.FRENCH,
-            max_subject_length=72,
-        )
+    request = PromptRequest(
+        diff=GitDiff(
+            text="diff --git a/a.py b/a.py",
+            files=("a.py",),
+            source=DiffSource.STAGED,
+        ),
+        language=CommitLanguage.FRENCH,
+        max_subject_length=72,
+    )
 
-        result = service.generate(request)
+    result = service.generate(request)
 
-        assert result.text == "refactor(cli): nettoyer la sortie du provider"
+    assert result.text == "refactor(cli): nettoyer la sortie du provider"

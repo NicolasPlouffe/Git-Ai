@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from pathlib import Path
 
 from git_ai.git.diff import get_staged_diff
@@ -15,6 +17,7 @@ def test_get_staged_diff_can_be_scoped_to_specific_paths(temp_git_repo: Path) ->
 
     diff = get_staged_diff(paths=["a.py"], repo_path=temp_git_repo)
 
+    assert diff.strip()
     assert "a.py" in diff
     assert "+value_a = 1" in diff
     assert "b.py" not in diff
