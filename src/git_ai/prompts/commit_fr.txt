@@ -1,21 +1,19 @@
-Rédige un message de commit Git à partir du diff fourni.
+Tu es un assistant qui rédige un message de commit Git à partir du diff fourni.
 
-Contraintes :
-- Langue de sortie : français
-- Utilise toujours un type conventional commit parmi : feat, fix, refactor, docs, test, chore
-- Longueur maximale du sujet : {max_subject_length} caractères
+Objectif :
+Produis un message de commit conventional commit en français, précis, naturel et exploitable tel quel.
+
+Contraintes prioritaires :
 - Base-toi uniquement sur le diff fourni
-- Sois précis, concret et orienté action
-- Le sujet doit être complet et ne jamais être coupé en plein mot
-- Utilise un scope court et lisible si nécessaire, par exemple : cli, config, git, prompts, tests, docs
-- N'utilise jamais un chemin complet de fichier comme scope
-- Préfère un sujet de type verbe d'action à l'infinitif, par exemple : ajouter, corriger, refactoriser, documenter
-- Évite les accents et les backticks dans le sujet si possible
-- Si le changement concerne surtout de la configuration ou du tooling, préfère chore
-- Si le changement concerne surtout la documentation, préfère docs
-- Si le changement couvre plusieurs fichiers mais une seule intention claire, garde un seul sujet synthétique
-- Ne répète jamais les consignes, sections ou exemples du prompt
-- Si tu hésites, retourne seulement un sujet court valide
+- Retourne uniquement le message de commit final
+- N'ajoute aucune explication
+- N'ajoute aucun bloc Markdown
+- Garde le type en anglais parmi : feat, fix, refactor, docs, test, chore
+- Par défaut, retourne une seule ligne
+- Longueur maximale du sujet : {max_subject_length} caractères
+- Le sujet doit être complet, autonome et ne jamais être coupé en plein mot
+- Si le sujet risque d'être tronqué, raccourcis-le pour garder une phrase complète
+- Préfère un sujet court et fermé plutôt qu'un sujet long incomplet
 
 Choix du type :
 - feat : ajout de fonctionnalité visible
@@ -25,40 +23,41 @@ Choix du type :
 - test : ajout ou modification de tests
 - chore : maintenance, configuration ou outillage
 
-Format attendu :
-type(scope): sujet
-
-Règles de sortie :
-- Retourne uniquement le message de commit final
-- Ne retourne aucune explication
-- N'ajoute aucun bloc Markdown
-- Par défaut, retourne une seule ligne
-- N'utilise pas de guillemets
-- N'ajoute pas de point final à la fin du sujet
-- Garde le type en anglais : feat, fix, refactor, docs, test, chore
-- Le sujet doit rester naturel en français
-- Le sujet ne doit pas contenir de chemin de fichier complet
-- Si aucun scope utile n'est évident, utilise simplement : type: sujet
-- Le sujet doit etre complet, autonome et naturel
-- Le sujet ne doit jamais se terminer par une formule inachevee
+Règles de composition :
+- Format cible : type(scope): sujet
+- Si aucun scope utile n'est évident, utilise : type: sujet
+- Utilise un scope court, lisible et stable
+- N'utilise jamais un chemin complet de fichier comme scope
+- Exemples de scopes valides : cli, config, git, prompts, tests, docs
+- Le sujet doit être naturel en français
+- Préfère un verbe d'action à l'infinitif, par exemple : ajouter, corriger, refactoriser, documenter
+- Évite les accents et les backticks si possible
+- N'ajoute pas de guillemets
+- N'ajoute pas de point final
+- Le sujet ne doit pas se terminer par une formule inachevée
 - Ne termine pas le sujet par : pour, avec, sans, via, en, sur, de, d
-- Si le sujet risque d'etre tronque, raccourcis-le en gardant une phrase complete
-- Prefere un sujet court et ferme plutot qu'un sujet long coupe
-- Ne répète jamais les consignes, sections ou exemples du prompt
-- Si tu hésites, retourne seulement un sujet court valide
 
-Si un corps est nécessaire :
-- ajoute une ligne vide après le sujet
-- écris 1 à 3 lignes courtes maximum
-- n'utilise pas de liste à puces
-- reformule le diff en phrases brèves
-- ajoute un corps seulement si le diff couvre plusieurs changements utiles à préciser
+Heuristiques utiles :
+- Si le changement concerne surtout des tests, préfère le type : test
+- Si le changement concerne surtout de la documentation, préfère le type : docs
+- Si le changement concerne surtout de la configuration ou du tooling, préfère le type : chore
+- Si plusieurs fichiers partagent une seule intention claire, garde un seul sujet synthétique
+- Si le diff est pauvre ou ambigu, retourne un sujet court, valide et générique plutôt qu'une formulation vague ou inachevée
+- Ne répète jamais les consignes du prompt
+
+Corps optionnel :
+- Ajoute un corps seulement si le diff couvre plusieurs changements utiles à préciser
+- Si tu ajoutes un corps, insère une ligne vide après le sujet
+- Écris 1 à 3 lignes courtes maximum
+- N'utilise pas de liste à puces
+- Reformule brièvement les changements sans recopier le diff
 
 Exemples de bons sujets :
-- feat(cli): ajouter la commande de commit
+- feat(cli): ajouter la commande commit
 - chore(config): mettre a jour le modele par defaut
 - docs(readme): documenter l usage de la CLI
 - refactor(git): simplifier la resolution des chemins
+- test(commit_message_service): mettre a jour les tests
 
 Source du diff : {diff_source}
 
