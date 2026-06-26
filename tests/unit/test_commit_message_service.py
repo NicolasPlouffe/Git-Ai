@@ -4,6 +4,7 @@ from git_ai.models import (
     CommitLanguage,
     DiffSource,
     GitDiff,
+    LLMRequest,
     LLMResponse,
     PromptPayload,
     PromptRequest,
@@ -277,7 +278,7 @@ def test_generate_normalizes_body_by_removing_extra_blank_lines() -> None:
 
     assert result.text == (
         "feat: add prompt builder\n\n"
-        "Add prompt loading service.\n"
+        "Add prompt loading service.\n\n"
         "Normalize commit output."
     )
 
@@ -308,3 +309,278 @@ def test_generate_raises_when_sanitization_removes_all_content() -> None:
 
     with pytest.raises(ProviderResponseError):
         service.generate(request)
+
+
+class DummyProvider:
+    def __init__(self, response_text: str) -> None:
+        self._response_text = response_text
+        self.calls: list[LLMRequest] = []
+
+    def generate(self, request: LLMRequest) -> LLMResponse:
+        self.calls.append(request)
+        return LLMResponse(text=self._response_text)
+
+
+class DummyPromptService:
+    def build_commit_prompt(self, request: PromptRequest) -> PromptPayload:
+        return PromptPayload(
+            system_prompt="system",
+            user_prompt="user",
+            metadata={"language": request.language.value},
+        )
+
+
+def make_request(diff_text: str = "diff --git a/file.py b/file.py") -> PromptRequest:
+    return PromptRequest(
+        diff=GitDiff(
+            text=diff_text,
+            files=("src/git_ai/cli.py",),
+            source=DiffSource.STAGED,
+        ),
+        language=CommitLanguage.FRENCH,
+        max_subject_length=50,
+    )
+
+
+def test_generate_raises_when_diff_is_empty() -> None:
+    provider = DummyProvider("feat(cli): ajouter la commande")
+    prompt_service = DummyPromptService()
+    service = CommitMessageService(provider=provider, prompt_service=prompt_service)
+
+    request = PromptRequest(
+        diff=GitDiff(
+            text="",
+            files=(),
+            source=DiffSource.STAGED,
+        ),
+        language=CommitLanguage.FRENCH,
+        max_subject_length=50,
+    )
+
+    with pytest.raises(ValueError, match="empty diff"):
+        service.generate(request)
+
+
+def test_generate_raises_when_provider_returns_empty_message() -> None:
+    provider = DummyProvider("")
+    prompt_service = DummyPromptService()
+    service = CommitMessageService(provider=provider, prompt_service=prompt_service)
+
+    with pytest.raises(ProviderResponseError, match="empty commit message"):
+        service.generate(make_request())
+
+
+def test_generate_removes_code_fences_and_known_prefix() -> None:
+    provider = DummyProvider(
+        "```text\n"
+        "Commit message:\n"
+        "feat(cli): ajouter la commande de commit\n"
+        "```"
+    )
+    prompt_service = DummyPromptService()
+    service = CommitMessageService(provider=provider, prompt_service=prompt_service)
+
+    result = service.generate(make_request())
+
+    assert result.text == "feat(cli): ajouter la commande de commit"
+
+
+def test_generate_removes_backticks_from_subject() -> None:
+    provider = DummyProvider("feat(cli): ajouter la commande `commit`")
+    prompt_service = DummyPromptService()
+    service = CommitMessageService(provider=provider, prompt_service=prompt_service)
+
+    result = service.generate(make_request())
+
+    assert result.text == "feat(cli): ajouter la commande commit"
+
+
+def test_generate_truncates_subject_and_removes_incomplete_ending() -> None:
+    provider = DummyProvider(
+        "feat(cli): ajouter la commande de commit avec interface utilisateur complete"
+    )
+    prompt_service = DummyPromptService()
+    service = CommitMessageService(provider=provider, prompt_service=prompt_service)
+
+    request = make_request()
+    request = PromptRequest(
+        diff=request.diff,
+        language=request.language,
+        max_subject_length=49,
+    )
+
+    result = service.generate(request)
+
+    assert result.text == "feat(cli): ajouter la commande de commit"
+    assert len(result.text) <= 49
+
+
+def test_generate_keeps_clean_body_when_present() -> None:
+    provider = DummyProvider(
+        "feat(cli): ajouter la commande de commit\n\n"
+        "- ajoute le flux principal\n"
+        "\n"
+        "  nettoie la sortie du provider  \n"
+    )
+    prompt_service = DummyPromptService()
+    service = CommitMessageService(provider=provider, prompt_service=prompt_service)
+
+    result = service.generate(make_request())
+
+    assert result.text == (
+        "feat(cli): ajouter la commande de commit\n\n"
+        "- ajoute le flux principal\n\n"
+        "nettoie la sortie du provider"
+    )
+
+
+def test_generate_passes_prompt_to_provider() -> None:
+    provider = DummyProvider("feat(cli): ajouter la commande de commit")
+    prompt_service = DummyPromptService()
+    service = CommitMessageService(
+        provider=provider,
+        prompt_service=prompt_service,
+        temperature=0.3,
+        max_tokens=80,
+    )
+
+    service.generate(make_request())
+
+    assert len(provider.calls) == 1
+    llm_request = provider.calls[0]
+    assert llm_request.prompt == "user"
+    assert llm_request.system_prompt == "system"
+    assert llm_request.temperature == 0.3
+    assert llm_request.max_tokens == 80
+
+
+def test_generate_removes_backticks_in_body() -> None:
+    class BacktickBodyProvider:
+        @property
+        def info(self) -> ProviderInfo:
+            return ProviderInfo(name="fake")
+
+        def generate(self, request):
+            return LLMResponse(
+                text="feat: add prompt builder\n\n"
+                     "Use `PromptService` to build prompts.\n"
+                     "Normalize `CommitMessageService` output.\n"
+            )
+
+    service = CommitMessageService(
+        provider=BacktickBodyProvider(),
+        prompt_service=FakePromptService(),
+    )
+
+    request = PromptRequest(
+        diff=GitDiff(
+            text="diff --git a/a.py b/a.py",
+            files=("a.py",),
+            source=DiffSource.STAGED,
+        ),
+        language=CommitLanguage.ENGLISH,
+        max_subject_length=72,
+    )
+
+    result = service.generate(request)
+
+    assert result.text == (
+        "feat: add prompt builder\n\n"
+        "Use PromptService to build prompts.\n"
+        "Normalize CommitMessageService output."
+    )
+
+def test_truncate_subject_never_returns_empty() -> None:
+    class ShortLimitProvider:
+        @property
+        def info(self) -> ProviderInfo:
+            return ProviderInfo(name="fake")
+
+        def generate(self, request):
+            return LLMResponse(text="feat: add prompt builder")
+
+    service = CommitMessageService(
+        provider=ShortLimitProvider(),
+        prompt_service=FakePromptService(),
+    )
+
+    request = PromptRequest(
+        diff=GitDiff(
+            text="diff --git a/a.py b/a.py",
+            files=("a.py",),
+            source=DiffSource.STAGED,
+        ),
+        language=CommitLanguage.ENGLISH,
+        max_subject_length=5,
+    )
+
+    result = service.generate(request)
+
+    assert result.text  # non vide
+    assert len(result.text) <= 5
+
+
+def test_generate_truncates_subject_and_removes_incomplete_ending() -> None:
+    class WeakEndingProvider:
+        @property
+        def info(self) -> ProviderInfo:
+            return ProviderInfo(name="fake")
+
+        def generate(self, request):
+            return LLMResponse(
+                text="feat(cli): ajouter la commande de commit avec interface utilisateur complete"
+            )
+
+    service = CommitMessageService(
+        provider=WeakEndingProvider(),
+        prompt_service=FakePromptService(),
+    )
+
+    request = PromptRequest(
+        diff=GitDiff(
+            text="diff --git a/a.py b/a.py",
+            files=("a.py",),
+            source=DiffSource.STAGED,
+        ),
+        language=CommitLanguage.FRENCH,
+        max_subject_length=47,
+    )
+
+    result = service.generate(request)
+
+    assert result.text == "feat(cli): ajouter la commande de commit"
+
+    def test_generate_removes_prompt_echo_from_response() -> None:
+        class PromptEchoProvider:
+            @property
+            def info(self) -> ProviderInfo:
+                return ProviderInfo(name="fake")
+
+            def generate(self, request):
+                return LLMResponse(
+                    text=(
+                        "refactor(cli): nettoyer la sortie du provider\n"
+                        "Rédige un message de commit Git à partir du diff fourni.\n"
+                        "Contraintes :\n"
+                        "- Langue de sortie : français\n"
+                    )
+                )
+
+        service = CommitMessageService(
+            provider=PromptEchoProvider(),
+            prompt_service=FakePromptService(),
+        )
+
+        request = PromptRequest(
+            diff=GitDiff(
+                text="diff --git a/a.py b/a.py",
+                files=("a.py",),
+                source=DiffSource.STAGED,
+            ),
+            language=CommitLanguage.FRENCH,
+            max_subject_length=72,
+        )
+
+        result = service.generate(request)
+
+        assert result.text == "refactor(cli): nettoyer la sortie du provider"
