@@ -17,7 +17,7 @@ def test_load_config_returns_defaults_when_no_yaml_env_or_cli() -> None:
 
     assert isinstance(config, AppConfig)
     assert config.provider == "ollama"
-    assert config.model == "llama3"
+    assert config.model == "qwen2.5-coder:7b"
     assert config.language == "fr"
     assert config.base_url == "http://localhost:11434"
     assert config.commit.format == "conventional"
