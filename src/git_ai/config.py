@@ -50,7 +50,7 @@ class GitConfig:
 @dataclass(slots=True)
 class AppConfig:
     provider: str = "ollama"
-    model: str = "llama3"
+    model: str = "qwen2.5-coder:7b"
     language: str = "fr"
     base_url: str = "http://localhost:11434"
     commit: CommitConfig = field(default_factory=CommitConfig)
@@ -212,7 +212,7 @@ def _build_app_config(raw: dict[str, Any]) -> AppConfig:
 
     return AppConfig(
         provider=raw.get("provider", "ollama"),
-        model=raw.get("model", "llama3"),
+        model=raw.get("model", "qwen2.5-coder:7b"),
         language=raw.get("language", "fr"),
         base_url=raw.get("base_url", "http://localhost:11434"),
         commit=CommitConfig(
