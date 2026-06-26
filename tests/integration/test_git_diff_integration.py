@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from pathlib import Path
 
 from git_ai.git.diff import get_staged_diff, has_staged_changes
@@ -12,6 +14,7 @@ def test_get_staged_diff_returns_patch_for_staged_file(temp_git_repo: Path) -> N
 
     diff = get_staged_diff(repo_path=temp_git_repo)
 
+    assert diff.strip()
     assert "diff --git" in diff
     assert "feature.py" in diff
     assert "+value = 1" in diff
