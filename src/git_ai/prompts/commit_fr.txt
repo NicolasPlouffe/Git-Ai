@@ -14,6 +14,8 @@ Contraintes :
 - Si le changement concerne surtout de la configuration ou du tooling, préfère chore
 - Si le changement concerne surtout la documentation, préfère docs
 - Si le changement couvre plusieurs fichiers mais une seule intention claire, garde un seul sujet synthétique
+- Ne répète jamais les consignes, sections ou exemples du prompt
+- Si tu hésites, retourne seulement un sujet court valide
 
 Choix du type :
 - feat : ajout de fonctionnalité visible
@@ -37,6 +39,13 @@ Règles de sortie :
 - Le sujet doit rester naturel en français
 - Le sujet ne doit pas contenir de chemin de fichier complet
 - Si aucun scope utile n'est évident, utilise simplement : type: sujet
+- Le sujet doit etre complet, autonome et naturel
+- Le sujet ne doit jamais se terminer par une formule inachevee
+- Ne termine pas le sujet par : pour, avec, sans, via, en, sur, de, d
+- Si le sujet risque d'etre tronque, raccourcis-le en gardant une phrase complete
+- Prefere un sujet court et ferme plutot qu'un sujet long coupe
+- Ne répète jamais les consignes, sections ou exemples du prompt
+- Si tu hésites, retourne seulement un sujet court valide
 
 Si un corps est nécessaire :
 - ajoute une ligne vide après le sujet
