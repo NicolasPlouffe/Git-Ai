@@ -6,6 +6,14 @@ Contraintes :
 - Longueur maximale du sujet : {max_subject_length} caractères
 - Base-toi uniquement sur le diff fourni
 - Sois précis, concret et orienté action
+- Le sujet doit être complet et ne jamais être coupé en plein mot
+- Utilise un scope court et lisible si nécessaire, par exemple : cli, config, git, prompts, tests, docs
+- N'utilise jamais un chemin complet de fichier comme scope
+- Préfère un sujet de type verbe d'action à l'infinitif, par exemple : ajouter, corriger, refactoriser, documenter
+- Évite les accents et les backticks dans le sujet si possible
+- Si le changement concerne surtout de la configuration ou du tooling, préfère chore
+- Si le changement concerne surtout la documentation, préfère docs
+- Si le changement couvre plusieurs fichiers mais une seule intention claire, garde un seul sujet synthétique
 
 Choix du type :
 - feat : ajout de fonctionnalité visible
@@ -15,6 +23,9 @@ Choix du type :
 - test : ajout ou modification de tests
 - chore : maintenance, configuration ou outillage
 
+Format attendu :
+type(scope): sujet
+
 Règles de sortie :
 - Retourne uniquement le message de commit final
 - Ne retourne aucune explication
@@ -23,12 +34,22 @@ Règles de sortie :
 - N'utilise pas de guillemets
 - N'ajoute pas de point final à la fin du sujet
 - Garde le type en anglais : feat, fix, refactor, docs, test, chore
+- Le sujet doit rester naturel en français
+- Le sujet ne doit pas contenir de chemin de fichier complet
+- Si aucun scope utile n'est évident, utilise simplement : type: sujet
 
 Si un corps est nécessaire :
 - ajoute une ligne vide après le sujet
 - écris 1 à 3 lignes courtes maximum
 - n'utilise pas de liste à puces
+- reformule le diff en phrases brèves
 - ajoute un corps seulement si le diff couvre plusieurs changements utiles à préciser
+
+Exemples de bons sujets :
+- feat(cli): ajouter la commande de commit
+- chore(config): mettre a jour le modele par defaut
+- docs(readme): documenter l usage de la CLI
+- refactor(git): simplifier la resolution des chemins
 
 Source du diff : {diff_source}
 
