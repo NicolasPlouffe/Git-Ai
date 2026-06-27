@@ -5,6 +5,7 @@ import pytest
 from git_ai.config import (
     AppConfig,
     ConfigError,
+    DEFAULT_MODEL,
     _string_to_bool,
     load_config,
     load_env_overrides,
@@ -17,7 +18,7 @@ def test_load_config_returns_defaults_when_no_yaml_env_or_cli() -> None:
 
     assert isinstance(config, AppConfig)
     assert config.provider == "ollama"
-    assert config.model == "qwen2.5-coder:7b"
+    assert config.model == DEFAULT_MODEL
     assert config.language == "fr"
     assert config.base_url == "http://localhost:11434"
     assert config.commit.format == "conventional"
@@ -57,7 +58,7 @@ git:
 def test_load_env_overrides_reads_flat_and_nested_values() -> None:
     env = {
         "GIT_AI_PROVIDER": "ollama",
-        "GIT_AI_MODEL": "qwen2.5-coder:7b",
+        "GIT_AI_MODEL": DEFAULT_MODEL,
         "GIT_AI_LANGUAGE": "es",
         "GIT_AI_OLLAMA_HOST": "http://127.0.0.1:11434",
         "GIT_AI_COMMIT_FORMAT": "simple",
@@ -70,7 +71,7 @@ def test_load_env_overrides_reads_flat_and_nested_values() -> None:
     data = load_env_overrides(env)
 
     assert data["provider"] == "ollama"
-    assert data["model"] == "qwen2.5-coder:7b"
+    assert data["model"] == DEFAULT_MODEL
     assert data["language"] == "es"
     assert data["base_url"] == "http://127.0.0.1:11434"
     assert data["commit"]["format"] == "simple"
