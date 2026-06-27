@@ -5,7 +5,15 @@ import pytest
 from git_ai.config import (
     AppConfig,
     ConfigError,
+    DEFAULT_BASE_URL,
+    DEFAULT_COMMIT_FORMAT,
+    DEFAULT_INCLUDE_BODY,
+    DEFAULT_LANGUAGE,
+    DEFAULT_MAX_SUBJECT_LENGTH,
     DEFAULT_MODEL,
+    DEFAULT_PROVIDER,
+    DEFAULT_PUSH_AFTER_COMMIT,
+    DEFAULT_REMOTE,
     _string_to_bool,
     load_config,
     load_env_overrides,
@@ -17,15 +25,15 @@ def test_load_config_returns_defaults_when_no_yaml_env_or_cli() -> None:
     config = load_config(config_path=Path("does-not-exist.yaml"), env={})
 
     assert isinstance(config, AppConfig)
-    assert config.provider == "ollama"
+    assert config.provider == DEFAULT_PROVIDER
     assert config.model == DEFAULT_MODEL
-    assert config.language == "fr"
-    assert config.base_url == "http://localhost:11434"
-    assert config.commit.format == "conventional"
-    assert config.commit.max_subject_length == 72
-    assert config.commit.include_body is False
-    assert config.git.push_after_commit is False
-    assert config.git.remote == "origin"
+    assert config.language == DEFAULT_LANGUAGE
+    assert config.base_url == DEFAULT_BASE_URL
+    assert config.commit.format == DEFAULT_COMMIT_FORMAT
+    assert config.commit.max_subject_length == DEFAULT_MAX_SUBJECT_LENGTH
+    assert config.commit.include_body == DEFAULT_INCLUDE_BODY
+    assert config.git.push_after_commit == DEFAULT_PUSH_AFTER_COMMIT
+    assert config.git.remote == DEFAULT_REMOTE
 
 
 def test_load_yaml_config_reads_mapping(tmp_path: Path) -> None:
@@ -51,14 +59,25 @@ git:
 
     assert data["provider"] == "ollama"
     assert data["model"] == "mistral"
+    assert data["language"] == "en"
+    assert data["base_url"] == "http://localhost:11434"
     assert data["commit"]["format"] == "simple"
+    assert data["commit"]["max_subject_length"] == 60
+    assert data["commit"]["include_body"] is True
+    assert data["git"]["push_after_commit"] is True
     assert data["git"]["remote"] == "upstream"
+
+
+def test_load_yaml_config_returns_empty_dict_when_missing_file() -> None:
+    data = load_yaml_config("missing-file.yaml")
+
+    assert data == {}
 
 
 def test_load_env_overrides_reads_flat_and_nested_values() -> None:
     env = {
         "GIT_AI_PROVIDER": "ollama",
-        "GIT_AI_MODEL": DEFAULT_MODEL,
+        "GIT_AI_MODEL": "custom-env-model",
         "GIT_AI_LANGUAGE": "es",
         "GIT_AI_OLLAMA_HOST": "http://127.0.0.1:11434",
         "GIT_AI_COMMIT_FORMAT": "simple",
@@ -71,7 +90,7 @@ def test_load_env_overrides_reads_flat_and_nested_values() -> None:
     data = load_env_overrides(env)
 
     assert data["provider"] == "ollama"
-    assert data["model"] == DEFAULT_MODEL
+    assert data["model"] == "custom-env-model"
     assert data["language"] == "es"
     assert data["base_url"] == "http://127.0.0.1:11434"
     assert data["commit"]["format"] == "simple"
@@ -79,6 +98,15 @@ def test_load_env_overrides_reads_flat_and_nested_values() -> None:
     assert data["commit"]["include_body"] is True
     assert data["git"]["push_after_commit"] is True
     assert data["git"]["remote"] == "origin"
+
+
+def test_load_env_overrides_rejects_non_integer_max_subject_length() -> None:
+    env = {
+        "GIT_AI_MAX_SUBJECT_LENGTH": "abc",
+    }
+
+    with pytest.raises(ConfigError, match="must be an integer"):
+        load_env_overrides(env)
 
 
 def test_load_config_applies_precedence_defaults_yaml_env_cli(tmp_path: Path) -> None:
@@ -130,12 +158,6 @@ git:
     assert config.git.remote == "origin"
 
 
-def test_load_yaml_config_returns_empty_dict_when_missing_file() -> None:
-    data = load_yaml_config("missing-file.yaml")
-
-    assert data == {}
-
-
 @pytest.mark.parametrize(
     ("value", "expected"),
     [
@@ -156,6 +178,7 @@ def test_string_to_bool_supports_common_values(value: str, expected: bool) -> No
 def test_string_to_bool_raises_on_invalid_value() -> None:
     with pytest.raises(ValueError):
         _string_to_bool("maybe")
+
 
 def test_load_config_accepts_portuguese_pr_language(tmp_path: Path) -> None:
     config_file = tmp_path / "git-ai.yaml"
@@ -246,11 +269,3 @@ def test_load_config_rejects_empty_base_url_from_cli_override() -> None:
             env={},
             cli_overrides={"base_url": "   "},
         )
-
-def test_load_env_overrides_rejects_non_integer_max_subject_length() -> None:
-    env = {
-        "GIT_AI_MAX_SUBJECT_LENGTH": "abc",
-    }
-
-    with pytest.raises(ConfigError, match="must be an integer"):
-        load_env_overrides(env)
