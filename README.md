@@ -166,7 +166,6 @@ pytest tests/integration
 - Architecture Python modulaire et extensible.
 - Gestion propre de la configuration multi-source.
 - Séparation nette entre orchestration métier et détails d’infrastructure.
-- Bon support pour démonstration technique et portfolio.
 
 ## Documentation
 
