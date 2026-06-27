@@ -2,15 +2,16 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
+from git_ai.config import DEFAULT_LANGUAGE, DEFAULT_PROVIDER, DEFAULT_MODEL, DEFAULT_BASE_URL, DEFAULT_PUSH_AFTER_COMMIT,DEFAULT_MAX_SUBJECT_LENGTH
 
 def make_config(
     *,
-    language: str = "fr",
-    provider: str = "ollama",
-    model: str = "qwen2.5-coder:7b",
-    base_url: str = "http://localhost:11434",
-    push_after_commit: bool = False,
-    max_subject_length: int = 72,
+    language: str = DEFAULT_LANGUAGE,
+    provider: str = DEFAULT_PROVIDER,
+    model: str = DEFAULT_MODEL,
+    base_url: str = DEFAULT_BASE_URL,
+    push_after_commit: DEFAULT_PUSH_AFTER_COMMIT,
+    max_subject_length: int = DEFAULT_MAX_SUBJECT_LENGTH,
 ):
     return SimpleNamespace(
         language=language,

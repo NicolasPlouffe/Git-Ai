@@ -105,6 +105,19 @@ def _string_to_bool(value: str) -> bool:
     raise ValueError(f"Invalid boolean value: {value}")
 
 
+def _coerce_bool(value: Any) -> bool:
+    if isinstance(value, bool):
+        return value
+
+    if isinstance(value, str):
+        return _string_to_bool(value)
+
+    if isinstance(value, int):
+        return bool(value)
+
+    raise ConfigError(f"Invalid boolean value: {value!r}")
+
+
 def _find_default_config_path(cwd: Path | None = None) -> Path | None:
     search_root = cwd or Path.cwd()
 
@@ -207,22 +220,46 @@ def _config_to_dict(config: AppConfig) -> dict[str, Any]:
 
 
 def _build_app_config(raw: dict[str, Any]) -> AppConfig:
+    defaults = AppConfig.defaults()
     commit_raw = raw.get("commit", {})
     git_raw = raw.get("git", {})
 
+    if not isinstance(commit_raw, dict):
+        raise ConfigError("commit config must be a mapping/object.")
+
+    if not isinstance(git_raw, dict):
+        raise ConfigError("git config must be a mapping/object.")
+
+    try:
+        max_subject_length = int(
+            commit_raw.get(
+                "max_subject_length",
+                defaults.commit.max_subject_length,
+            )
+        )
+    except (TypeError, ValueError) as exc:
+        raise ConfigError("commit.max_subject_length must be an integer.") from exc
+
     return AppConfig(
-        provider=raw.get("provider", "ollama"),
-        model=raw.get("model", "qwen2.5-coder:7b"),
-        language=raw.get("language", "fr"),
-        base_url=raw.get("base_url", "http://localhost:11434"),
+        provider=raw.get("provider", defaults.provider),
+        model=raw.get("model", defaults.model),
+        language=raw.get("language", defaults.language),
+        base_url=raw.get("base_url", defaults.base_url),
         commit=CommitConfig(
-            format=commit_raw.get("format", "conventional"),
-            max_subject_length=int(commit_raw.get("max_subject_length", 72)),
-            include_body=bool(commit_raw.get("include_body", False)),
+            format=commit_raw.get("format", defaults.commit.format),
+            max_subject_length=max_subject_length,
+            include_body=_coerce_bool(
+                commit_raw.get("include_body", defaults.commit.include_body)
+            ),
         ),
         git=GitConfig(
-            push_after_commit=bool(git_raw.get("push_after_commit", False)),
-            remote=git_raw.get("remote", "origin"),
+            push_after_commit=_coerce_bool(
+                git_raw.get(
+                    "push_after_commit",
+                    defaults.git.push_after_commit,
+                )
+            ),
+            remote=git_raw.get("remote", defaults.git.remote),
         ),
     )
 
