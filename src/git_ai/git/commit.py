@@ -9,6 +9,7 @@ actions de façon fiable et documentée pour les couches supérieures.
 
 from pathlib import Path
 
+from git_ai.config import DEFAULT_REMOTE
 from git_ai.git._common import GitCommandError, run_git_command
 from git_ai.git.branch import get_current_branch, get_push_remote
 
@@ -52,7 +53,7 @@ def push_current_branch(
         raise ValueError("Cannot push while HEAD is detached.")
 
     if set_upstream:
-        remote = get_push_remote(repo_path=repo_path) or "origin"
+        remote = get_push_remote(repo_path=repo_path) or DEFAULT_REMOTE
         run_git_command(
             ["push", "--set-upstream", remote, branch],
             repo_path=repo_path,
