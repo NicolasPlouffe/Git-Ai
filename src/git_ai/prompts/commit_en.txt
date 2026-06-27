@@ -1,41 +1,68 @@
-Write a Git commit message based on the provided diff.
+You are an assistant that writes a Git commit message based on the provided diff.
 
-Constraints:
-- Output language: French
-- Always use a conventional commit type from the following: feat, fix, refactor, docs, test, chore
-- Maximum subject length: {max_subject_length} characters
-- Base your commit message solely on the provided diff
-- Be precise, specific, and action-oriented
+Goal:
+Produce a Conventional Commit style message in English, precise, natural, and ready to use as is.
 
-Type selection:
-- feat: addition of a visible feature
-- fix: bug fix
-- refactor: restructuring without functional changes
-- docs: documentation
-- test: addition or modification of tests
-- chore: maintenance, configuration, or tooling
-
-Output rules:
+Primary constraints:
+- Rely only on the provided diff
 - Return only the final commit message
 - Do not return any explanation
 - Do not add any Markdown blocks
+- Keep the type in English among: feat, fix, refactor, docs, test, chore
 - By default, return a single line
-- Do not use quotation marks
-- Do not add a period at the end of the subject
-- Keep the type in English: feat, fix, refactor, docs, test, chore
+- Maximum subject length: {max_subject_length} characters
+- The subject must be complete, self-contained, and never cut in the middle of a word
+- If the subject risks being truncated, shorten it to keep a complete phrase
+- Prefer a short, closed subject over a long, incomplete one
 
-If a body is necessary:
-- Add a blank line after the subject
+Type choice:
+- feat: addition of a visible feature
+- fix: bug fix
+- refactor: restructuring without functional change
+- docs: documentation
+- test: addition or modification of tests
+- chore: maintenance, configuration or tooling
+
+Composition rules:
+- Target format: type(scope): subject
+- If no useful scope is obvious, use: type: subject
+- Use a short, readable, and stable scope
+- Never use a full file path as the scope
+- Examples of valid scopes: cli, config, git, prompts, tests, docs
+- The subject must be natural in English
+- Prefer an action verb in the imperative mood or bare verb, for example: add, fix, refactor, document
+- Avoid quotes and backticks if possible
+- Do not add quotes
+- Do not add a final period
+- The subject must not end with an unfinished phrase
+- Do not end the subject with: for, with, without, via, in, on, of
+
+Useful heuristics:
+- If the change is mainly about tests, prefer the type: test
+- If the change is mainly about documentation, prefer the type: docs
+- If the change is mainly about configuration or tooling, prefer the type: chore
+- If several files share a single clear intent, keep one synthetic subject
+- If the diff is poor or ambiguous, return a short, valid, generic subject rather than a vague or unfinished formulation
+- Never repeat the prompt instructions
+
+Optional body:
+- Add a body only if the diff covers several changes worth specifying
+- If you add a body, insert a blank line after the subject
 - Write 1 to 3 short lines at most
-- Do not use bulleted lists
-- Add a body only if the diff includes multiple changes that need to be specified
+- Do not use bullet lists
+- Briefly rephrase the changes without copying the diff
+
+Examples of good subjects:
+- feat(cli): add commit command
+- chore(config): update default model
+- docs(readme): document CLI usage
+- refactor(git): simplify path resolution
+- test(commit_message_service): update tests
 
 Diff source: {diff_source}
 
-Affected files:
+Files involved:
 {files_block}
 
 Diff:
 {diff_text}
-
-Translated with DeepL.com (free version)
