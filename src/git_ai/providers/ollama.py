@@ -4,6 +4,8 @@ import json
 from typing import Any
 from urllib import error, request as urllib_request
 
+from git_ai.config import DEFAULT_BASE_URL
+
 from git_ai.exceptions import (
     ProviderConnectionError,
     ProviderError,
@@ -18,7 +20,7 @@ class OllamaProvider:
     def __init__(
         self,
         model: str,
-        base_url: str = "http://localhost:11434",
+        base_url: str = DEFAULT_BASE_URL,
         timeout: float = 60.0,
     ) -> None:
         self._model = model
