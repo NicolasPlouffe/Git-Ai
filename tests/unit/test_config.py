@@ -100,6 +100,52 @@ def test_load_env_overrides_reads_flat_and_nested_values() -> None:
     assert data["git"]["remote"] == "origin"
 
 
+def test_load_env_overrides_prefers_base_url_over_ollama_host() -> None:
+    env = {
+        "GIT_AI_BASE_URL": "http://base-url:11434",
+        "GIT_AI_OLLAMA_HOST": "http://ollama-host:11434",
+    }
+
+    data = load_env_overrides(env)
+
+    # La variable canonique l'emporte.
+    assert data["base_url"] == "http://base-url:11434"
+
+def test_load_env_overrides_uses_ollama_host_when_base_url_missing() -> None:
+    env = {
+        "GIT_AI_OLLAMA_HOST": "http://ollama-host:11434",
+    }
+
+    data = load_env_overrides(env)
+
+    assert data["base_url"] == "http://ollama-host:11434"
+
+
+def test_load_env_overrides_handles_minimal_env() -> None:
+    env = {
+        "GIT_AI_PROVIDER": "ollama",
+        "GIT_AI_MODEL": "env-model",
+        "GIT_AI_LANGUAGE": "es",
+    }
+
+    data = load_env_overrides(env)
+
+    assert data["provider"] == "ollama"
+    assert data["model"] == "env-model"
+    assert data["language"] == "es"
+    assert "commit" not in data
+    assert "git" not in data
+
+
+def test_load_env_overrides_rejects_non_integer_max_subject_length() -> None:
+    env = {
+        "GIT_AI_MAX_SUBJECT_LENGTH": "abc",
+    }
+
+    with pytest.raises(ConfigError, match="must be an integer"):
+        load_env_overrides(env)
+
+
 def test_load_env_overrides_rejects_non_integer_max_subject_length() -> None:
     env = {
         "GIT_AI_MAX_SUBJECT_LENGTH": "abc",

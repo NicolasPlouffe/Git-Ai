@@ -14,6 +14,16 @@ SUPPORTED_PROVIDERS = {"ollama", "llamacpp", "openai-compatible"}
 SUPPORTED_LANGUAGES = {"fr", "en", "es", "pt"}
 SUPPORTED_COMMIT_FORMATS = {"conventional", "simple"}
 
+DEFAULT_PROVIDER: str = "ollama"
+DEFAULT_MODEL: str = "qwen2.5-coder:7b"
+DEFAULT_LANGUAGE: str = "fr"
+DEFAULT_BASE_URL: str = "http://localhost:11434"
+DEFAULT_COMMIT_FORMAT: str = "conventional"
+DEFAULT_MAX_SUBJECT_LENGTH: int = 72
+DEFAULT_INCLUDE_BODY: bool = False
+DEFAULT_PUSH_AFTER_COMMIT: bool = False
+DEFAULT_REMOTE: str = "origin"
+
 
 class ConfigError(ValueError):
     """Raised when application configuration is invalid."""
@@ -21,9 +31,9 @@ class ConfigError(ValueError):
 
 @dataclass(slots=True)
 class CommitConfig:
-    format: str = "conventional"
-    max_subject_length: int = 72
-    include_body: bool = False
+    format: str = DEFAULT_COMMIT_FORMAT
+    max_subject_length: int = DEFAULT_MAX_SUBJECT_LENGTH
+    include_body: bool = DEFAULT_INCLUDE_BODY
 
     def __post_init__(self) -> None:
         if self.format not in SUPPORTED_COMMIT_FORMATS:
@@ -39,8 +49,8 @@ class CommitConfig:
 
 @dataclass(slots=True)
 class GitConfig:
-    push_after_commit: bool = False
-    remote: str = "origin"
+    push_after_commit: bool = DEFAULT_PUSH_AFTER_COMMIT
+    remote: str = DEFAULT_REMOTE
 
     def __post_init__(self) -> None:
         if not self.remote.strip():
@@ -49,10 +59,10 @@ class GitConfig:
 
 @dataclass(slots=True)
 class AppConfig:
-    provider: str = "ollama"
-    model: str = "qwen2.5-coder:7b"
-    language: str = "fr"
-    base_url: str = "http://localhost:11434"
+    provider: str = DEFAULT_PROVIDER
+    model: str = DEFAULT_MODEL
+    language: str = DEFAULT_LANGUAGE
+    base_url: str = DEFAULT_BASE_URL
     commit: CommitConfig = field(default_factory=CommitConfig)
     git: GitConfig = field(default_factory=GitConfig)
 
@@ -162,10 +172,11 @@ def load_env_overrides(env: dict[str, str] | None = None) -> dict[str, Any]:
     if language := source.get("GIT_AI_LANGUAGE"):
         result["language"] = language
 
+    # Variable canonique pour l'URL du backend.
     if base_url := source.get("GIT_AI_BASE_URL"):
         result["base_url"] = base_url
-
-    if ollama_host := source.get("GIT_AI_OLLAMA_HOST"):
+    elif ollama_host := source.get("GIT_AI_OLLAMA_HOST"):
+        # Alias de compatibilité pour Ollama.
         result["base_url"] = ollama_host
 
     commit: dict[str, Any] = {}
