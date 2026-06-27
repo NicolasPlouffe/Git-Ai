@@ -5,6 +5,7 @@ from types import SimpleNamespace
 import pytest
 from typer.testing import CliRunner
 
+from git_ai.config import DEFAULT_MODEL
 from git_ai.models import CommitLanguage, DiffSource, GitDiff, PromptRequest
 
 
@@ -17,7 +18,7 @@ def make_config(
     *,
     language: str = "fr",
     provider: str = "ollama",
-    model: str = "qwen2.5-coder:7b",
+    model: str = DEFAULT_MODEL,
     base_url: str = "http://localhost:11434",
     push_after_commit: bool = False,
     max_subject_length: int = 72,
