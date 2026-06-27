@@ -5,6 +5,7 @@ from unittest.mock import patch
 
 import pytest
 
+from git_ai.config import DEFAULT_MODEL
 from git_ai.exceptions import ProviderConnectionError, ProviderResponseError
 from git_ai.models import LLMRequest
 from git_ai.providers.ollama import OllamaProvider
@@ -24,8 +25,8 @@ class DummyHTTPResponse:
         return False
 
 
-def test_generate_returns_normalized_text():
-    provider = OllamaProvider(model="qwen2.5-coder:7b")
+def test_generate_returns_normalized_text() -> None:
+    provider = OllamaProvider(model=DEFAULT_MODEL)
     request = LLMRequest(
         system_prompt="Return only a commit message.",
         prompt="Add --dry-run option to CLI.",
@@ -34,7 +35,7 @@ def test_generate_returns_normalized_text():
     )
 
     payload = {
-        "model": "qwen2.5-coder:7b",
+        "model": DEFAULT_MODEL,
         "choices": [
             {
                 "message": {
@@ -51,12 +52,12 @@ def test_generate_returns_normalized_text():
         result = provider.generate(request)
 
     assert result.text == "feat(cli): add dry-run option"
-    assert result.model_name == "qwen2.5-coder:7b"
+    assert result.model_name == DEFAULT_MODEL
     assert not result.is_empty
 
 
-def test_generate_raises_response_error_on_missing_content():
-    provider = OllamaProvider(model="qwen2.5-coder:7b")
+def test_generate_raises_response_error_on_missing_content() -> None:
+    provider = OllamaProvider(model=DEFAULT_MODEL)
     request = LLMRequest(prompt="Generate a commit message")
 
     payload = {"choices": []}
@@ -69,8 +70,8 @@ def test_generate_raises_response_error_on_missing_content():
             provider.generate(request)
 
 
-def test_generate_raises_connection_error_on_url_error():
-    provider = OllamaProvider(model="qwen2.5-coder:7b")
+def test_generate_raises_connection_error_on_url_error() -> None:
+    provider = OllamaProvider(model=DEFAULT_MODEL)
     request = LLMRequest(prompt="Generate a commit message")
 
     from urllib import error as urllib_error

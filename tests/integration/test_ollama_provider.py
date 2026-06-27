@@ -6,10 +6,11 @@ import pytest
 
 from git_ai.models import LLMRequest
 from git_ai.providers.ollama import OllamaProvider
+from git_ai.config import DEFAULT_MODEL
 
 
 OLLAMA_BASE_URL = os.getenv("GIT_AI_OLLAMA_BASE_URL", "http://localhost:11434")
-OLLAMA_MODEL = os.getenv("GIT_AI_OLLAMA_MODEL", "qwen2.5-coder:7b")
+OLLAMA_MODEL = os.getenv("GIT_AI_OLLAMA_MODEL", DEFAULT_MODEL)
 
 
 @pytest.mark.integration
