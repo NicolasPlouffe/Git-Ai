@@ -11,12 +11,13 @@ import yaml
 DEFAULT_CONFIG_FILENAMES = ("git-ai.yaml", "git-ai.yml")
 
 SUPPORTED_PROVIDERS = {"ollama", "llamacpp", "openai-compatible"}
+AVAILABLE_MODELS = {"llama3.1:8b","qwen2.5-coder:7b"}
 SUPPORTED_LANGUAGES = {"fr", "en", "es", "pt"}
 SUPPORTED_COMMIT_FORMATS = {"conventional", "simple"}
 
 DEFAULT_PROVIDER: str = "ollama"
-DEFAULT_MODEL: str = "qwen2.5-coder:7b"
-DEFAULT_LANGUAGE: str = "fr"
+DEFAULT_MODEL: str = "llama3.1:8b"
+DEFAULT_LANGUAGE: str = "en"
 DEFAULT_BASE_URL: str = "http://localhost:11434"
 DEFAULT_COMMIT_FORMAT: str = "conventional"
 DEFAULT_MAX_SUBJECT_LENGTH: int = 72
