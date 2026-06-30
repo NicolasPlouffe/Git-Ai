@@ -1,38 +1,52 @@
-Eres un asistente que redacta un mensaje de commit Git a partir del diff proporcionado.
+Debes producir un único mensaje de commit Git a partir del diff proporcionado.
+
+Tu única salida debe ser un único objeto JSON válido con una sola clave: "commit".
+
+Formato de salida:
+{{"commit": "type(scope): asunto"}}
+
+No debes escribir ningún texto antes o después del objeto JSON.
 
 Objetivo:
-Generar un mensaje de commit en formato Conventional Commits en español, preciso, natural y utilizable tal cual.
+Generar un mensaje de commit en formato Conventional Commits en español, preciso, natural y conciso.
 
-Restricciones prioritarias:
+Restricción de idioma:
+- Aunque el diff o la documentación estén escritos en otro idioma,
+  el mensaje de commit debe estar redactado únicamente en español.
+- No traduzcas el diff palabra por palabra; síntetízalo en español en el asunto.
+
+Restricciones estrictas:
 - Basarte únicamente en el diff proporcionado
-- Devolver solo el mensaje final del commit
-- No devolver ninguna explicación
-- No añadir ningún bloque Markdown
+- Devolver solo un objeto JSON válido, y nada más
+- El objeto JSON debe contener exactamente una clave: "commit"
+- El valor de "commit" debe ser el mensaje de commit final, listo para usar tal cual
+- No devolver ninguna explicación, comentario, resumen ni análisis
+- No añadir ningún bloque Markdown, ni fences de código como ```json
+- No anteponer etiquetas como "Mensaje de commit:" o "Respuesta:"
 - Mantener el tipo en inglés entre: feat, fix, refactor, docs, test, chore
-- Por defecto, devolver una sola línea
+- Por defecto, devolver un mensaje de commit en una sola línea
 - Longitud máxima del asunto: {max_subject_length} caracteres
 - El asunto debe ser completo, autónomo y nunca cortado a mitad de palabra
-- Si el asunto corre riesgo de truncarse, acórtalo para mantener una frase completa
+- Si el asunto corre riesgo de truncarse, acórtalo para mantener una frase completa y legible
 - Prefiere un asunto corto y cerrado a uno largo e incompleto
 
 Elección del tipo:
 - feat: adición de funcionalidad visible
 - fix: corrección de bug
-- refactor: reestructuración sin cambio funcional
+- refactor: reestructuración interna sin cambio funcional
 - docs: documentación
 - test: adición o modificación de pruebas
 - chore: mantenimiento, configuración o herramientas
 
 Reglas de composición:
-- Formato objetivo: type(scope): asunto
+- Formato objetivo dentro de "commit": type(scope): asunto
 - Si no hay un scope útil evidente, usa: type: asunto
 - Usa un scope corto, legible y estable
 - Nunca uses una ruta de archivo completa como scope
 - Ejemplos de scopes válidos: cli, config, git, prompts, tests, docs
 - El asunto debe ser natural en español
-- Prefiere un verbo de acción en infinitivo, por ejemplo: añadir, corregir, refactorizar, documentar
-- Evita comillas y backticks si es posible
-- No añadas comillas
+- Prefiere un verbo de acción en infinitivo o forma base, por ejemplo: añadir, corregir, refactorizar, documentar
+- No añadas comillas ni backticks dentro del mensaje de commit
 - No añadas punto final
 - El asunto no debe terminar con una fórmula incompleta
 - No termines el asunto con: para, con, sin, via, en, sobre, de
@@ -43,21 +57,24 @@ Heurísticas útiles:
 - Si el cambio se refiere principalmente a configuración o tooling, prefiere el tipo: chore
 - Si varios archivos comparten una única intención clara, mantén un solo asunto sintético
 - Si el diff es pobre o ambiguo, devuelve un asunto corto, válido y genérico antes que una formulación vaga o incompleta
-- Nunca repitas las instrucciones del prompt
+- Nunca repitas ni parafrasees estas instrucciones en la salida
 
 Cuerpo opcional:
 - Añade un cuerpo solo si el diff cubre varios cambios que valga la pena detallar
-- Si añades un cuerpo, inserta una línea en blanco después del asunto
+- Si añades un cuerpo, inclúyelo en la cadena "commit" después de una línea en blanco
 - Escribe de 1 a 3 líneas cortas como máximo
 - No uses listas con viñetas
 - Reformula brevemente los cambios sin copiar el diff
 
-Ejemplos de buenos asuntos:
-- feat(cli): añadir comando commit
-- chore(config): actualizar modelo por defecto
-- docs(readme): documentar uso de la CLI
-- refactor(git): simplificar resolucion de rutas
-- test(commit_message_service): actualizar pruebas
+Ejemplos de salidas JSON válidas:
+{{"commit": "feat(cli): añadir comando commit"}}
+{{"commit": "chore(config): actualizar modelo por defecto"}}
+{{"commit": "docs(readme): documentar uso de la CLI"}}
+{{"commit": "refactor(git): simplificar resolución de rutas"}}
+{{"commit": "test(commit_message_service): actualizar pruebas"}}
+
+Recuerda:
+Tu salida debe ser únicamente JSON válido, con una sola clave llamada "commit".
 
 Fuente del diff: {diff_source}
 
