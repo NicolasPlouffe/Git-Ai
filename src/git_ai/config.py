@@ -11,12 +11,13 @@ import yaml
 DEFAULT_CONFIG_FILENAMES = ("git-ai.yaml", "git-ai.yml")
 
 SUPPORTED_PROVIDERS = {"ollama", "llamacpp", "openai-compatible"}
+AVAILABLE_MODELS = {"llama3.1:8b","qwen2.5-coder:7b"}
 SUPPORTED_LANGUAGES = {"fr", "en", "es", "pt"}
 SUPPORTED_COMMIT_FORMATS = {"conventional", "simple"}
 
 DEFAULT_PROVIDER: str = "ollama"
-DEFAULT_MODEL: str = "qwen2.5-coder:7b"
-DEFAULT_LANGUAGE: str = "fr"
+DEFAULT_MODEL: str = "llama3.1:8b"
+DEFAULT_LANGUAGE: str = "en"
 DEFAULT_BASE_URL: str = "http://localhost:11434"
 DEFAULT_COMMIT_FORMAT: str = "conventional"
 DEFAULT_MAX_SUBJECT_LENGTH: int = 72
@@ -139,9 +140,12 @@ def _find_default_config_path(cwd: Path | None = None) -> Path | None:
     return None
 
 
-def load_yaml_config(config_path: str | Path | None = None) -> dict[str, Any]:
+def load_yaml_config(
+    config_path: str | Path | None = None,
+    cwd: Path | None = None,
+) -> dict[str, Any]:
     if config_path is None:
-        path = _find_default_config_path()
+        path = _find_default_config_path(cwd=cwd)
         if path is None:
             return {}
     else:
@@ -279,9 +283,10 @@ def load_config(
     config_path: str | Path | None = None,
     cli_overrides: dict[str, Any] | None = None,
     env: dict[str, str] | None = None,
+    cwd: Path | None = None,
 ) -> AppConfig:
     defaults = _config_to_dict(AppConfig.defaults())
-    yaml_config = load_yaml_config(config_path)
+    yaml_config = load_yaml_config(config_path=config_path, cwd=cwd)
     env_config = load_env_overrides(env)
     cli_config = cli_overrides or {}
 

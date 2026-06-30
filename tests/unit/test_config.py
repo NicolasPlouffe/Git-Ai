@@ -315,3 +315,55 @@ def test_load_config_rejects_empty_base_url_from_cli_override() -> None:
             env={},
             cli_overrides={"base_url": "   "},
         )
+
+def test_load_config_reads_language_from_yaml_in_given_cwd(tmp_path):
+    (tmp_path / "git-ai.yaml").write_text("language: pt\n", encoding="utf-8")
+
+    config = load_config(cwd=tmp_path, env={})
+
+    assert config.language == "pt"
+
+
+def test_load_config_cli_language_overrides_yaml(tmp_path):
+    (tmp_path / "git-ai.yaml").write_text("language: pt\n", encoding="utf-8")
+
+    config = load_config(
+        cwd=tmp_path,
+        cli_overrides={"language": "es"},
+        env={},
+    )
+
+    assert config.language == "es"
+
+
+def test_load_config_defaults_without_yaml_env_cli(tmp_path):
+    config = load_config(cwd=tmp_path, env={})
+    assert config.language == "en"
+
+def test_load_config_uses_defaults_without_yaml_env_cli(tmp_path):
+    config = load_config(cwd=tmp_path, env={})
+    assert config.language == "en"
+
+
+def test_load_config_reads_language_from_yaml(tmp_path):
+    (tmp_path / "git-ai.yaml").write_text(
+        "language: pt\n",
+        encoding="utf-8",
+    )
+
+    config = load_config(cwd=tmp_path, env={})
+    assert config.language == "pt"
+
+
+def test_load_config_cli_language_overrides_yaml(tmp_path):
+    (tmp_path / "git-ai.yaml").write_text(
+        "language: pt\n",
+        encoding="utf-8",
+    )
+
+    config = load_config(
+        cwd=tmp_path,
+        cli_overrides={"language": "es"},
+        env={},
+    )
+    assert config.language == "es"

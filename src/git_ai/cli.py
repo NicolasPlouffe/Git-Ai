@@ -232,6 +232,7 @@ def commit_command(
         config = load_config(
             config_path=config_path,
             cli_overrides=cli_overrides,
+            cwd=repo_path or Path.cwd(),
         )
 
         explicit_files = [str(path) for path in files] if files else None
