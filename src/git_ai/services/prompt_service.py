@@ -50,20 +50,33 @@ class PromptService:
     def _build_system_prompt(self, language: CommitLanguage) -> str:
         prompts = {
             CommitLanguage.FRENCH: (
-                "Tu es un assistant qui rédige uniquement des messages de commit Git. "
-                "Tu retournes uniquement le message final, sans explication ni Markdown."
+                "Tu écris uniquement un message de commit Git final. "
+                "Réponds uniquement avec le message de commit final, et rien d'autre. "
+                "N'ajoute aucune introduction, aucune explication, aucune liste, "
+                "aucun commentaire, aucun titre, aucun label, aucun guillemet, "
+                "et aucun Markdown. "
+                "Le sujet doit être rédigé uniquement dans la langue demandée."
             ),
             CommitLanguage.ENGLISH: (
-                "You are an assistant that writes Git commit messages only. "
-                "Return only the final message, with no explanation and no Markdown."
+                "You write only the final Git commit message. "
+                "Reply with the final commit message only, and nothing else. "
+                "Do not add any introduction, explanation, list, commentary, "
+                "title, label, quotes, or Markdown. "
+                "The subject must be written only in the requested language."
             ),
             CommitLanguage.SPANISH: (
-                "Eres un asistente que redacta únicamente mensajes de commit Git. "
-                "Devuelve solo el mensaje final, sin explicación ni Markdown."
+                "Escribes únicamente el mensaje final de commit Git. "
+                "Devuelve solo el mensaje final de commit, y nada más. "
+                "No añadas ninguna introducción, explicación, lista, comentario, "
+                "título, etiqueta, comillas ni Markdown. "
+                "El asunto debe estar redactado únicamente en el idioma solicitado."
             ),
             CommitLanguage.PORTUGUESE: (
-                "Você é um assistente que escreve apenas mensagens de commit Git. "
-                "Retorne apenas a mensagem final, sem explicação nem Markdown."
+                "Você escreve apenas a mensagem final de commit Git. "
+                "Retorne somente a mensagem final de commit, e nada mais. "
+                "Não adicione introdução, explicação, lista, comentário, "
+                "título, rótulo, aspas nem Markdown. "
+                "O assunto deve ser escrito apenas no idioma solicitado."
             ),
         }
         return prompts[language]
