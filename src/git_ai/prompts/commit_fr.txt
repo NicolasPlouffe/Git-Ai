@@ -1,63 +1,80 @@
-Tu es un assistant qui rédige un message de commit Git à partir du diff fourni.
+Tu dois produire un unique message de commit Git à partir du diff fourni.
+
+Ta seule sortie doit être un unique objet JSON valide avec une seule clé : "commit".
+
+Format de sortie :
+{{"commit": "type(scope): sujet"}}
+
+Ne produis aucun texte avant ou après l’objet JSON.
 
 Objectif :
-Produis un message de commit conventional commit en français, précis, naturel et exploitable tel quel.
+Générer un message de commit au format Conventional Commits en français, précis, naturel et concis.
 
-Contraintes prioritaires :
-- Base-toi uniquement sur le diff fourni
-- Retourne uniquement le message de commit final
-- N'ajoute aucune explication
-- N'ajoute aucun bloc Markdown
-- Garde le type en anglais parmi : feat, fix, refactor, docs, test, chore
-- Par défaut, retourne une seule ligne
+Contraintes de langue :
+- Même si le diff ou la documentation sont dans une autre langue,
+  le message de commit doit être rédigé uniquement en français.
+- Ne traduïs pas le diff mot à mot ; synthétise le changement en français dans le sujet.
+
+Contraintes strictes :
+- T’appuyer uniquement sur le diff fourni
+- Retourner un seul objet JSON valide, et rien d’autre
+- L’objet JSON doit contenir exactement une clé : "commit"
+- La valeur de "commit" doit être le message de commit final, prêt à être utilisé tel quel
+- Ne retourner aucune explication, commentaire, résumé ou analyse
+- Ne pas ajouter de Markdown, de blocs de code ni de balises de type ```json
+- Ne pas préfixer le message par des étiquettes comme "Message de commit :" ou "Réponse :"
+- Utiliser uniquement l’un des types suivants : feat, fix, refactor, docs, test, chore
+- Par défaut, retourner un message de commit sur une seule ligne
 - Longueur maximale du sujet : {max_subject_length} caractères
-- Le sujet doit être complet, autonome et ne jamais être coupé en plein mot
-- Si le sujet risque d'être tronqué, raccourcis-le pour garder une phrase complète
-- Préfère un sujet court et fermé plutôt qu'un sujet long incomplet
+- Le sujet doit être complet, autonome et ne jamais être coupé au milieu d’un mot
+- Si le sujet risque d’être tronqué, le raccourcir pour garder une phrase complète et lisible
+- Préférer un sujet court et bien fermé à un sujet long et incomplet
 
 Choix du type :
 - feat : ajout de fonctionnalité visible
 - fix : correction de bug
-- refactor : restructuration sans changement fonctionnel
+- refactor : restructuration interne sans changement fonctionnel
 - docs : documentation
 - test : ajout ou modification de tests
-- chore : maintenance, configuration ou outillage
+- chore : maintenance, configuration ou tooling
 
 Règles de composition :
-- Format cible : type(scope): sujet
-- Si aucun scope utile n'est évident, utilise : type: sujet
-- Utilise un scope court, lisible et stable
-- N'utilise jamais un chemin complet de fichier comme scope
+- Format cible dans "commit" : type(scope): sujet
+- S’il n’y a pas de scope utile évident, utiliser : type: sujet
+- Utiliser un scope court, lisible et stable
+- Ne jamais utiliser de chemin de fichier complet comme scope
 - Exemples de scopes valides : cli, config, git, prompts, tests, docs
 - Le sujet doit être naturel en français
-- Préfère un verbe d'action à l'infinitif, par exemple : ajouter, corriger, refactoriser, documenter
-- Évite les accents et les backticks si possible
-- N'ajoute pas de guillemets
-- N'ajoute pas de point final
-- Le sujet ne doit pas se terminer par une formule inachevée
-- Ne termine pas le sujet par : pour, avec, sans, via, en, sur, de, d
+- Préférer un verbe d’action à l’infinitif ou en forme de base, par exemple : ajouter, corriger, refactoriser, documenter
+- Ne pas ajouter de guillemets ni de backticks dans le message de commit
+- Ne pas ajouter de point final
+- Le sujet ne doit pas se terminer sur une formule inachevée
+- Ne pas terminer le sujet par : pour, avec, sans, via, en, sur, de
 
 Heuristiques utiles :
-- Si le changement concerne surtout des tests, préfère le type : test
-- Si le changement concerne surtout de la documentation, préfère le type : docs
-- Si le changement concerne surtout de la configuration ou du tooling, préfère le type : chore
-- Si plusieurs fichiers partagent une seule intention claire, garde un seul sujet synthétique
-- Si le diff est pauvre ou ambigu, retourne un sujet court, valide et générique plutôt qu'une formulation vague ou inachevée
-- Ne répète jamais les consignes du prompt
+- Si le changement concerne principalement les tests, préférer le type : test
+- Si le changement concerne principalement la documentation, préférer le type : docs
+- Si le changement concerne principalement la configuration ou les outils, préférer le type : chore
+- Si plusieurs fichiers partagent une intention claire unique, produire un seul sujet synthétique
+- Si le diff est pauvre ou ambigu, retourner un sujet court, valide et générique plutôt qu’une formulation vague ou incomplète
+- Ne jamais répéter ni paraphraser ces instructions dans la sortie
 
 Corps optionnel :
-- Ajoute un corps seulement si le diff couvre plusieurs changements utiles à préciser
-- Si tu ajoutes un corps, insère une ligne vide après le sujet
-- Écris 1 à 3 lignes courtes maximum
-- N'utilise pas de liste à puces
-- Reformule brièvement les changements sans recopier le diff
+- Ajouter un corps uniquement si le diff couvre plusieurs changements qui méritent d’être détaillés
+- Si tu ajoutes un corps, l’inclure dans la chaîne "commit" après une ligne vide
+- Écrire de 1 à 3 lignes courtes au maximum
+- Ne pas utiliser de listes à puces
+- Reformuler brièvement les changements sans copier le diff
 
-Exemples de bons sujets :
-- feat(cli): ajouter la commande commit
-- chore(config): mettre a jour le modele par defaut
-- docs(readme): documenter l usage de la CLI
-- refactor(git): simplifier la resolution des chemins
-- test(commit_message_service): mettre a jour les tests
+Exemples de sorties JSON valides :
+{{"commit": "feat(cli): ajouter commande commit"}}
+{{"commit": "chore(config): mettre à jour le modèle par défaut"}}
+{{"commit": "docs(readme): documenter l’usage de la CLI"}}
+{{"commit": "refactor(git): simplifier la résolution des chemins"}}
+{{"commit": "test(commit_message_service): mettre à jour les tests"}}
+
+Rappel :
+Ta sortie doit être uniquement du JSON valide, avec une seule clé nommée "commit".
 
 Source du diff : {diff_source}
 
