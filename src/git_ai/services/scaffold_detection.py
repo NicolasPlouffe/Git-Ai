@@ -28,6 +28,7 @@ IGNORED_PATH_PATTERNS: tuple[str, ...] = (
 @dataclass(frozen=True)
 class ScaffoldFallback:
     commit_text: str
+    matched_keys: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -74,10 +75,11 @@ RULES: tuple[ScaffoldRule, ...] = (
         min_confidence=0.60,
     ),
     ScaffoldRule(
-        key="dotnet",
-        label="C#/.NET",
-        file_signals=("Program.cs",),
-        optional_signals=("*.csproj", "*.sln", "global.json"),
+        key="python",
+        label="Python",
+        file_signals=("pyproject.toml",),
+        dir_signals=("src/", "tests/"),
+        optional_signals=("requirements.txt",),
         min_confidence=0.60,
     ),
     ScaffoldRule(
@@ -112,11 +114,10 @@ RULES: tuple[ScaffoldRule, ...] = (
         min_confidence=0.55,
     ),
     ScaffoldRule(
-        key="python",
-        label="Python",
-        file_signals=("pyproject.toml",),
-        dir_signals=("src/", "tests/"),
-        optional_signals=("requirements.txt",),
+        key="dotnet",
+        label="C#/.NET",
+        file_signals=("Program.cs",),
+        optional_signals=("*.csproj", "*.sln", "global.json"),
         min_confidence=0.60,
     ),
     ScaffoldRule(
@@ -202,22 +203,37 @@ class ScaffoldDetectionService:
         if not added_paths:
             return None
 
-        best_match = self._find_best_match(added_paths)
-        if best_match is None:
+        matches = self._find_matches(added_paths)
+        if not matches:
             return None
 
-        if best_match.confidence < self._min_confidence:
+        strong_matches = [
+            match for match in matches if match.confidence >= self._min_confidence
+        ]
+        if not strong_matches:
             return None
 
         message = self._build_commit_message(
             language=getattr(request, "language", "en"),
-            match=best_match,
+            matches=strong_matches,
         )
-        return ScaffoldFallback(commit_text=message)
 
-    def _build_commit_message(self, language: str, match: ScaffoldMatch) -> str:
-        normalized_language = (language or "en").lower()
+        return ScaffoldFallback(
+            commit_text=message,
+            matched_keys=tuple(match.key for match in strong_matches),
+        )
 
+    def _build_commit_message(self, language: str, matches: list[ScaffoldMatch]) -> str:
+        normalized_language = self._normalize_language(language)
+
+        if len(matches) >= 3:
+            return self._build_multi_generic_message(normalized_language)
+
+        if len(matches) == 2:
+            labels = tuple(match.label for match in matches[:2])
+            return self._build_dual_scaffold_message(normalized_language, labels)
+
+        match = matches[0]
         if match.confidence >= self._contextualized_message_confidence:
             return self._build_contextualized_message(normalized_language, match.label)
 
@@ -228,6 +244,23 @@ class ScaffoldDetectionService:
             "en": f"chore: add initial {label} scaffold",
             "es": f"chore: agregar scaffold inicial de {label}",
             "fr": f"chore: ajouter le scaffold initial {label}",
+        }
+        return messages.get(language, messages["en"])
+
+    def _build_dual_scaffold_message(self, language: str, labels: tuple[str, str]) -> str:
+        first, second = labels
+        messages = {
+            "en": f"chore: initialize {first} and {second} projects",
+            "es": f"chore: inicializar los proyectos {first} y {second}",
+            "fr": f"chore: initialiser les projets {first} et {second}",
+        }
+        return messages.get(language, messages["en"])
+
+    def _build_multi_generic_message(self, language: str) -> str:
+        messages = {
+            "en": "chore: initialize multiple project scaffolds",
+            "es": "chore: inicializar múltiples scaffolds de proyecto",
+            "fr": "chore: initialiser plusieurs scaffolds de projet",
         }
         return messages.get(language, messages["en"])
 
@@ -303,7 +336,7 @@ class ScaffoldDetectionService:
             return None
         return match.group(2)
 
-    def _find_best_match(self, added_paths: list[str]) -> ScaffoldMatch | None:
+    def _find_matches(self, added_paths: list[str]) -> list[ScaffoldMatch]:
         candidates: list[ScaffoldMatch] = []
 
         for rule in RULES:
@@ -311,20 +344,32 @@ class ScaffoldDetectionService:
             if match is not None:
                 candidates.append(match)
 
-        if not candidates:
-            return None
-
         candidates.sort(key=lambda item: item.confidence, reverse=True)
-        return candidates[0]
+        return candidates
 
     def _is_ignored_path(self, path: str) -> bool:
         return any(fnmatch(path, pattern) for pattern in IGNORED_PATH_PATTERNS)
 
     def _match_dir_signal(self, path: str, signal: str) -> bool:
-        return path.startswith(signal)
+        normalized_signal = signal.rstrip("/")
+        parts = path.split("/")[:-1]
+        return normalized_signal in parts
 
     def _match_path_signal(self, path: str, signal: str) -> bool:
-        return path == signal or fnmatch(path, signal)
+        if path == signal or fnmatch(path, signal):
+            return True
+
+        filename = path.rsplit("/", 1)[-1]
+        if signal == filename:
+            return True
+
+        if "/" not in signal and fnmatch(filename, signal):
+            return True
+
+        if "/" in signal and fnmatch(path, f"*/{signal}"):
+            return True
+
+        return False
 
     def _matched_dir_signals(self, paths: list[str], signals: tuple[str, ...]) -> list[str]:
         matched: list[str] = []
@@ -339,6 +384,20 @@ class ScaffoldDetectionService:
             if any(self._match_path_signal(path, signal) for path in paths):
                 matched.append(signal)
         return matched
+
+    def _normalize_language(self, language: str) -> str:
+        value = getattr(language, "value", language)
+        normalized = (value or "en").lower()
+
+        mapping = {
+            "french": "fr",
+            "english": "en",
+            "spanish": "es",
+            "fr": "fr",
+            "en": "en",
+            "es": "es",
+        }
+        return mapping.get(normalized, "en")
 
     def _passes_bootstrap_gate(self, stats: ScaffoldStats) -> bool:
         return (
