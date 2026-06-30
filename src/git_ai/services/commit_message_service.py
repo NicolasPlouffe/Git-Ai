@@ -4,7 +4,7 @@ from git_ai.exceptions import ProviderResponseError
 from git_ai.models import CommitMessage, LLMRequest, LLMResponse, PromptRequest
 from git_ai.providers.base import LLMProvider
 from git_ai.services.prompt_service import PromptService
-
+import json
 
 class CommitMessageService:
     """Orchestre prompt + provider + nettoyage final du message."""
@@ -20,6 +20,35 @@ class CommitMessageService:
         self._prompt_service = prompt_service
         self._temperature = temperature
         self._max_tokens = max_tokens
+
+    def _extract_commit_text(self, text: str) -> str:
+        json_commit = self._extract_commit_from_json(text)
+        if json_commit is not None:
+            return json_commit.strip()
+
+        cleaned = text
+        cleaned = self._strip_code_fences(cleaned)
+        cleaned = self._strip_known_prefixes(cleaned)
+        cleaned = self._strip_prompt_echo(cleaned)
+        return cleaned.strip()
+
+    def _extract_commit_from_json(self, text: str) -> str | None:
+        candidate = text.strip()
+
+        try:
+            payload = json.loads(candidate)
+        except json.JSONDecodeError:
+            return None
+
+        if not isinstance(payload, dict):
+            return None
+
+        commit = payload.get("commit")
+        if not isinstance(commit, str):
+            return None
+
+        normalized = commit.strip()
+        return normalized or None
 
     def generate(self, request: PromptRequest) -> CommitMessage:
         """Produit un message de commit propre à partir d'un diff."""
@@ -55,9 +84,7 @@ class CommitMessageService:
             raise ProviderResponseError("The provider returned an empty commit message.")
 
         text = response.text.strip()
-        text = self._strip_code_fences(text)
-        text = self._strip_known_prefixes(text)
-        text = self._strip_prompt_echo(text)
+        text = self._extract_commit_text(text)
 
         if not text:
             raise ProviderResponseError("The commit message is empty after sanitization.")
@@ -88,7 +115,7 @@ class CommitMessageService:
         cleaned_lines = [
             line
             for line in lines
-            if line.strip() not in {"```", "```txt", "```text", "```markdown"}
+            if line.strip() not in {"```", "```txt", "```text", "```markdown", "```json"}
         ]
         return "\n".join(cleaned_lines).strip()
 
@@ -99,6 +126,11 @@ class CommitMessageService:
             "message de commit:",
             "mensaje de commit:",
             "mensagem de commit:",
+            "réponse :",
+            "reponse :",
+            "answer:",
+            "respuesta:",
+            "response:",
         )
 
         stripped = text.strip()
@@ -124,33 +156,25 @@ class CommitMessageService:
         if subject.endswith("."):
             subject = subject[:-1].rstrip()
 
+        lowered = subject.lower()
+        explanatory_starts = (
+            "voici",
+            "il semble",
+            "it appears",
+            "here is",
+            "this commit",
+            "ce commit",
+            "esta respuesta",
+            "parece que",
+        )
+
+        for prefix in explanatory_starts:
+            if lowered.startswith(prefix):
+                raise ProviderResponseError(
+                    "The provider returned an explanatory response instead of a commit subject."
+                )
+
         return subject
-
-    def _trim_incomplete_ending(self, subject: str) -> str:
-        weak_endings = {
-            "pour",
-            "avec",
-            "sans",
-            "via",
-            "en",
-            "sur",
-            "de",
-            "d",
-        }
-
-        cleaned = subject.strip()
-
-        while cleaned:
-            last_word = cleaned.split()[-1].lower()
-            if last_word not in weak_endings:
-                return cleaned
-
-            last_space = cleaned.rfind(" ")
-            if last_space <= 0:
-                return ""
-            cleaned = cleaned[:last_space].rstrip(" .:-")
-
-        return cleaned
 
     def _normalize_body_lines(self, lines: list[str]) -> list[str]:
         cleaned_lines: list[str] = []
