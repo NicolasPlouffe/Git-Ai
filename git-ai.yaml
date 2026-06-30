@@ -1,6 +1,6 @@
 provider: ollama
 model: llama3.1:8b
-language: fr
+language: en
 base_url: http://localhost:11434
 
 commit:
