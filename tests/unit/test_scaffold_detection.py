@@ -133,6 +133,7 @@ index 1111111..2222222 100644
 
     assert fallback is None
 
+
 def test_extract_changed_files_detects_all_new_files():
     diff_text = """
 diff --git a/package.json b/package.json
@@ -150,3 +151,142 @@ new file mode 100644
     assert ("A", "package.json") in files
     assert ("A", "app/page.tsx") in files
     assert len(files) == 2
+
+
+def test_detects_dual_scaffold_and_returns_dual_message():
+    diff_text = """
+diff --git a/cpp-api/CMakeLists.txt b/cpp-api/CMakeLists.txt
+new file mode 100644
+--- /dev/null
++++ b/cpp-api/CMakeLists.txt
+diff --git a/cpp-api/main.cpp b/cpp-api/main.cpp
+new file mode 100644
+--- /dev/null
++++ b/cpp-api/main.cpp
+diff --git a/csharp-api/app.sln b/csharp-api/app.sln
+new file mode 100644
+--- /dev/null
++++ b/csharp-api/app.sln
+diff --git a/csharp-api/src/app.csproj b/csharp-api/src/app.csproj
+new file mode 100644
+--- /dev/null
++++ b/csharp-api/src/app.csproj
+diff --git a/csharp-api/global.json b/csharp-api/global.json
+new file mode 100644
+--- /dev/null
++++ b/csharp-api/global.json
+diff --git a/csharp-api/Program.cs b/csharp-api/Program.cs
+new file mode 100644
+--- /dev/null
++++ b/csharp-api/Program.cs
+diff --git a/README.md b/README.md
+new file mode 100644
+--- /dev/null
++++ b/README.md
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+--- /dev/null
++++ b/.gitignore
+"""
+
+    service = ScaffoldDetectionService()
+    fallback = service.detect(PromptRequestStub(diff_text, language="en"))
+
+    assert fallback is not None
+    assert fallback.commit_text == "chore: initialize C++ and C#/.NET projects"
+    assert set(fallback.matched_keys) == {"cpp", "dotnet"}
+
+
+def test_detects_three_scaffolds_and_returns_generic_multi_message():
+    diff_text = """
+diff --git a/cpp-api/CMakeLists.txt b/cpp-api/CMakeLists.txt
+new file mode 100644
+--- /dev/null
++++ b/cpp-api/CMakeLists.txt
+diff --git a/cpp-api/main.cpp b/cpp-api/main.cpp
+new file mode 100644
+--- /dev/null
++++ b/cpp-api/main.cpp
+diff --git a/python-api/pyproject.toml b/python-api/pyproject.toml
+new file mode 100644
+--- /dev/null
++++ b/python-api/pyproject.toml
+diff --git a/python-api/src/app/__init__.py b/python-api/src/app/__init__.py
+new file mode 100644
+--- /dev/null
++++ b/python-api/src/app/__init__.py
+diff --git a/python-api/tests/test_app.py b/python-api/tests/test_app.py
+new file mode 100644
+--- /dev/null
++++ b/python-api/tests/test_app.py
+diff --git a/csharp-api/Program.cs b/csharp-api/Program.cs
+new file mode 100644
+--- /dev/null
++++ b/csharp-api/Program.cs
+diff --git a/csharp-api/app.sln b/csharp-api/app.sln
+new file mode 100644
+--- /dev/null
++++ b/csharp-api/app.sln
+diff --git a/csharp-api/src/app.csproj b/csharp-api/src/app.csproj
+new file mode 100644
+--- /dev/null
++++ b/csharp-api/src/app.csproj
+diff --git a/csharp-api/global.json b/csharp-api/global.json
+new file mode 100644
+--- /dev/null
++++ b/csharp-api/global.json
+"""
+
+    service = ScaffoldDetectionService()
+    fallback = service.detect(PromptRequestStub(diff_text, language="en"))
+
+    assert fallback is not None
+    assert fallback.commit_text == "chore: initialize multiple project scaffolds"
+    assert set(fallback.matched_keys) == {"cpp", "dotnet", "python"}
+
+
+def test_keeps_single_match_behavior_for_one_detected_scaffold():
+    diff_text = """
+diff --git a/cpp-api/CMakeLists.txt b/cpp-api/CMakeLists.txt
+new file mode 100644
+--- /dev/null
++++ b/cpp-api/CMakeLists.txt
+diff --git a/cpp-api/main.cpp b/cpp-api/main.cpp
+new file mode 100644
+--- /dev/null
++++ b/cpp-api/main.cpp
+diff --git a/cpp-api/src/foo.cpp b/cpp-api/src/foo.cpp
+new file mode 100644
+--- /dev/null
++++ b/cpp-api/src/foo.cpp
+diff --git a/cpp-api/include/foo.hpp b/cpp-api/include/foo.hpp
+new file mode 100644
+--- /dev/null
++++ b/cpp-api/include/foo.hpp
+diff --git a/README.md b/README.md
+new file mode 100644
+--- /dev/null
++++ b/README.md
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+--- /dev/null
++++ b/.gitignore
+diff --git a/.env.example b/.env.example
+new file mode 100644
+--- /dev/null
++++ b/.env.example
+diff --git a/CMakePresets.json b/CMakePresets.json
+new file mode 100644
+--- /dev/null
++++ b/CMakePresets.json
+"""
+
+    service = ScaffoldDetectionService()
+    fallback = service.detect(PromptRequestStub(diff_text, language="fr"))
+
+    assert fallback is not None
+    assert fallback.commit_text in {
+        "chore: initialiser le projet",
+        "chore: ajouter le scaffold initial C++",
+    }
+    assert fallback.matched_keys == ("cpp",)
