@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import pytest
 
+from dataclasses import dataclass
+
 from git_ai.exceptions import ProviderResponseError
 from git_ai.models import (
     CommitLanguage,
@@ -34,6 +36,29 @@ class FakePromptService:
             user_prompt="USER",
             metadata={"language": request.language.value},
         )
+
+@dataclass(frozen=True)
+class FakeScaffoldFallback:
+    commit_text: str
+
+
+class FakeScaffoldDetectionService:
+    def __init__(self, fallback: FakeScaffoldFallback | None) -> None:
+        self._fallback = fallback
+        self.calls = 0
+
+    def detect(self, request: PromptRequest) -> FakeScaffoldFallback | None:
+        self.calls += 1
+        return self._fallback
+
+
+class FailingProvider:
+    @property
+    def info(self) -> ProviderInfo:
+        return ProviderInfo(name="failing")
+
+    def generate(self, request: LLMRequest) -> LLMResponse:
+        raise AssertionError("Provider should not be called when scaffold fallback is used.")
 
 
 def test_generate_returns_commit_message() -> None:
@@ -575,3 +600,43 @@ def test_generate_removes_prompt_echo_from_response() -> None:
     result = service.generate(request)
 
     assert result.text == "refactor(cli): nettoyer la sortie du provider"
+
+
+def test_generate_uses_scaffold_fallback_without_calling_provider() -> None:
+    scaffold_detection_service = FakeScaffoldDetectionService(
+        FakeScaffoldFallback("chore: initialiser le projet")
+    )
+
+    service = CommitMessageService(
+        provider=FailingProvider(),
+        prompt_service=FakePromptService(),
+        scaffold_detection_service=scaffold_detection_service,
+    )
+
+    request = PromptRequest(
+        diff=GitDiff(
+            text="diff --git a/package.json b/package.json",
+            files=("package.json",),
+            source=DiffSource.STAGED,
+        ),
+        language=CommitLanguage.FRENCH,
+        max_subject_length=72,
+    )
+
+    result = service.generate(request)
+
+    assert result.text == "chore: initialiser le projet"
+    assert result.language is CommitLanguage.FRENCH
+    assert scaffold_detection_service.calls == 1
+
+
+def make_service(
+    provider=None,
+    prompt_service=None,
+    scaffold_detection_service=None,
+) -> CommitMessageService:
+    return CommitMessageService(
+        provider=provider or DummyProvider("feat(cli): ajouter la commande"),
+        prompt_service=prompt_service or DummyPromptService(),
+        scaffold_detection_service=scaffold_detection_service,
+    )
