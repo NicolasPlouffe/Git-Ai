@@ -5,20 +5,66 @@ from typing import Annotated
 
 import typer
 
-DEFAULT_CONFIG_CONTENT = """provider: ollama
-model: llama3.1:8b
-language: en
-base_url: http://localhost:11434
+from git_ai.config import SUPPORTED_LANGUAGES, SUPPORTED_PROVIDERS
 
-commit:
-  format: conventional
-  max_subject_length: 72
-  include_body: false
+DEFAULT_OUTPUT = Path("git-ai.yaml")
+DEFAULT_PROVIDER = "ollama"
+DEFAULT_MODEL = "llama3.1:8b"
+DEFAULT_LANGUAGE = "en"
+DEFAULT_BASE_URL = "http://localhost:11434"
+DEFAULT_PUSH_AFTER_COMMIT = False
+DEFAULT_REMOTE = "origin"
+DEFAULT_COMMIT_FORMAT = "conventional"
+DEFAULT_MAX_SUBJECT_LENGTH = 72
+DEFAULT_INCLUDE_BODY = False
 
-git:
-  push_after_commit: false
-  remote: origin
-"""
+
+def _validate_language(lang: str) -> str:
+    normalized = lang.strip().lower()
+    if normalized not in SUPPORTED_LANGUAGES:
+        supported = ", ".join(sorted(SUPPORTED_LANGUAGES))
+        raise typer.BadParameter(
+            f"Unsupported language '{lang}'. Supported languages: {supported}."
+        )
+    return normalized
+
+
+def _validate_provider(provider: str) -> str:
+    normalized = provider.strip().lower()
+    if normalized not in SUPPORTED_PROVIDERS:
+        supported = ", ".join(sorted(SUPPORTED_PROVIDERS))
+        raise typer.BadParameter(
+            f"Unsupported provider '{provider}'. Supported providers: {supported}."
+        )
+    return normalized
+
+
+def _build_init_config_text(
+    *,
+    provider: str,
+    model: str,
+    language: str,
+    base_url: str,
+    push_after_commit: bool,
+) -> str:
+    push_value = "true" if push_after_commit else "false"
+    include_body_value = "true" if DEFAULT_INCLUDE_BODY else "false"
+
+    return (
+        f"provider: {provider}\n"
+        f"model: {model}\n"
+        f"language: {language}\n"
+        f"base_url: {base_url}\n"
+        "\n"
+        "commit:\n"
+        f"  format: {DEFAULT_COMMIT_FORMAT}\n"
+        f"  max_subject_length: {DEFAULT_MAX_SUBJECT_LENGTH}\n"
+        f"  include_body: {include_body_value}\n"
+        "\n"
+        "git:\n"
+        f"  push_after_commit: {push_value}\n"
+        f"  remote: {DEFAULT_REMOTE}\n"
+    )
 
 
 def register_init_command(app: typer.Typer) -> None:
@@ -30,7 +76,7 @@ def register_init_command(app: typer.Typer) -> None:
                 "--output",
                 help="Chemin du fichier de configuration à créer.",
             ),
-        ] = Path("git-ai.yaml"),
+        ] = DEFAULT_OUTPUT,
         force: Annotated[
             bool,
             typer.Option(
@@ -38,7 +84,47 @@ def register_init_command(app: typer.Typer) -> None:
                 help="Écrase le fichier s'il existe déjà.",
             ),
         ] = False,
+        provider: Annotated[
+            str,
+            typer.Option(
+                "--provider",
+                help="Provider à écrire dans la configuration initiale.",
+            ),
+        ] = DEFAULT_PROVIDER,
+        model: Annotated[
+            str,
+            typer.Option(
+                "--model",
+                help="Modèle à écrire dans la configuration initiale.",
+            ),
+        ] = DEFAULT_MODEL,
+        lang: Annotated[
+            str,
+            typer.Option(
+                "--lang",
+                help="Langue par défaut à écrire dans la configuration initiale.",
+            ),
+        ] = DEFAULT_LANGUAGE,
+        base_url: Annotated[
+            str,
+            typer.Option(
+                "--base-url",
+                help="URL du backend à écrire dans la configuration initiale.",
+            ),
+        ] = DEFAULT_BASE_URL,
+        push: Annotated[
+            bool,
+            typer.Option(
+                "--push/--no-push",
+                help="Valeur initiale de push_after_commit.",
+            ),
+        ] = DEFAULT_PUSH_AFTER_COMMIT,
     ) -> None:
+        validated_provider = _validate_provider(provider)
+        validated_lang = _validate_language(lang)
+        normalized_model = model.strip()
+        normalized_base_url = base_url.strip()
+
         if output.exists() and not force:
             typer.secho(
                 f"Erreur : le fichier existe déjà : {output}",
@@ -47,8 +133,26 @@ def register_init_command(app: typer.Typer) -> None:
             )
             raise typer.Exit(code=2)
 
-        output.write_text(DEFAULT_CONFIG_CONTENT, encoding="utf-8")
+        content = _build_init_config_text(
+            provider=validated_provider,
+            model=normalized_model,
+            language=validated_lang,
+            base_url=normalized_base_url,
+            push_after_commit=push,
+        )
+
+        output.write_text(content, encoding="utf-8")
+
         typer.secho(
             f"Fichier de configuration créé : {output}",
             fg=typer.colors.GREEN,
         )
+        typer.echo("")
+        typer.echo("Valeurs initiales :")
+        typer.echo(f"- provider : {validated_provider}")
+        typer.echo(f"- model : {normalized_model}")
+        typer.echo(f"- language : {validated_lang}")
+        typer.echo(f"- base_url : {normalized_base_url}")
+        typer.echo(f"- push_after_commit : {push}")
+        typer.echo("")
+        typer.echo("Prochaine étape : ajouter un fichier ou un dossier avec git add et ensuite lancer `git-ai commit --dry-run`")
