@@ -12,12 +12,12 @@ from tests.unit.factories import (
 )
 
 
-@patch("git_ai.cli.create_commit")
-@patch("git_ai.cli.push_current_branch")
-@patch("git_ai.cli._build_commit_message_service")
-@patch("git_ai.cli._build_git_diff")
-@patch("git_ai.cli._build_selection_service")
-@patch("git_ai.cli.load_config")
+@patch("git_ai.commands.commit.create_commit")
+@patch("git_ai.commands.commit.push_current_branch")
+@patch("git_ai.commands.commit._build_commit_message_service")
+@patch("git_ai.commands.commit._build_git_diff")
+@patch("git_ai.commands.commit._build_selection_service")
+@patch("git_ai.commands.commit.load_config")
 def test_cli_dry_run_does_not_create_commit(
     mock_load_config,
     mock_build_selection_service,
@@ -37,7 +37,7 @@ def test_cli_dry_run_does_not_create_commit(
     commit_service.generate.return_value = make_commit_message("feat: message de test")
     mock_build_commit_message_service.return_value = commit_service
 
-    result = cli_runner.invoke(app, ["--dry-run"])
+    result = cli_runner.invoke(app, ["commit", "--dry-run"])
 
     assert result.exit_code == 0
     assert "Message généré :" in result.stdout
@@ -47,12 +47,12 @@ def test_cli_dry_run_does_not_create_commit(
     mock_push_current_branch.assert_not_called()
 
 
-@patch("git_ai.cli.create_commit")
-@patch("git_ai.cli.push_current_branch")
-@patch("git_ai.cli._build_commit_message_service")
-@patch("git_ai.cli._build_git_diff")
-@patch("git_ai.cli._build_selection_service")
-@patch("git_ai.cli.load_config")
+@patch("git_ai.commands.commit.create_commit")
+@patch("git_ai.commands.commit.push_current_branch")
+@patch("git_ai.commands.commit._build_commit_message_service")
+@patch("git_ai.commands.commit._build_git_diff")
+@patch("git_ai.commands.commit._build_selection_service")
+@patch("git_ai.commands.commit.load_config")
 def test_cli_creates_commit_without_push_by_default(
     mock_load_config,
     mock_build_selection_service,
@@ -72,7 +72,7 @@ def test_cli_creates_commit_without_push_by_default(
     commit_service.generate.return_value = make_commit_message("feat: message réel")
     mock_build_commit_message_service.return_value = commit_service
 
-    result = cli_runner.invoke(app, [])
+    result = cli_runner.invoke(app, ["commit"])
 
     assert result.exit_code == 0
     assert "Commit créé avec succès." in result.stdout
@@ -83,12 +83,12 @@ def test_cli_creates_commit_without_push_by_default(
     mock_push_current_branch.assert_not_called()
 
 
-@patch("git_ai.cli.create_commit")
-@patch("git_ai.cli.push_current_branch")
-@patch("git_ai.cli._build_commit_message_service")
-@patch("git_ai.cli._build_git_diff")
-@patch("git_ai.cli._build_selection_service")
-@patch("git_ai.cli.load_config")
+@patch("git_ai.commands.commit.create_commit")
+@patch("git_ai.commands.commit.push_current_branch")
+@patch("git_ai.commands.commit._build_commit_message_service")
+@patch("git_ai.commands.commit._build_git_diff")
+@patch("git_ai.commands.commit._build_selection_service")
+@patch("git_ai.commands.commit.load_config")
 def test_cli_creates_commit_and_push_when_config_enabled(
     mock_load_config,
     mock_build_selection_service,
@@ -108,7 +108,7 @@ def test_cli_creates_commit_and_push_when_config_enabled(
     commit_service.generate.return_value = make_commit_message("feat: message avec push")
     mock_build_commit_message_service.return_value = commit_service
 
-    result = cli_runner.invoke(app, [])
+    result = cli_runner.invoke(app, ["commit"])
 
     assert result.exit_code == 0
     assert "Commit créé avec succès." in result.stdout
@@ -120,10 +120,10 @@ def test_cli_creates_commit_and_push_when_config_enabled(
     mock_push_current_branch.assert_called_once_with(repo_path=None)
 
 
-@patch("git_ai.cli._build_commit_message_service")
-@patch("git_ai.cli._build_git_diff")
-@patch("git_ai.cli._build_selection_service")
-@patch("git_ai.cli.load_config")
+@patch("git_ai.commands.commit._build_commit_message_service")
+@patch("git_ai.commands.commit._build_git_diff")
+@patch("git_ai.commands.commit._build_selection_service")
+@patch("git_ai.commands.commit.load_config")
 def test_cli_propagates_provider_error(
     mock_load_config,
     mock_build_selection_service,
@@ -141,15 +141,15 @@ def test_cli_propagates_provider_error(
     commit_service.generate.side_effect = ProviderError("Provider down")
     mock_build_commit_message_service.return_value = commit_service
 
-    result = cli_runner.invoke(app, [])
+    result = cli_runner.invoke(app, ["commit"])
 
     assert result.exit_code == 1
     assert "Provider error: Provider down" in result.stderr
 
 
-@patch("git_ai.cli._build_git_diff")
-@patch("git_ai.cli._build_selection_service")
-@patch("git_ai.cli.load_config")
+@patch("git_ai.commands.commit._build_git_diff")
+@patch("git_ai.commands.commit._build_selection_service")
+@patch("git_ai.commands.commit.load_config")
 def test_cli_fails_cleanly_on_empty_diff(
     mock_load_config,
     mock_build_selection_service,
@@ -166,16 +166,16 @@ def test_cli_fails_cleanly_on_empty_diff(
         is_empty=True,
     )
 
-    result = cli_runner.invoke(app, [])
+    result = cli_runner.invoke(app, ["commit"])
 
     assert result.exit_code == 2
     assert "Erreur : Le diff Git est vide." in result.stderr
 
 
-@patch("git_ai.cli._build_commit_message_service")
-@patch("git_ai.cli._build_git_diff")
-@patch("git_ai.cli._build_selection_service")
-@patch("git_ai.cli.load_config")
+@patch("git_ai.commands.commit._build_commit_message_service")
+@patch("git_ai.commands.commit._build_git_diff")
+@patch("git_ai.commands.commit._build_selection_service")
+@patch("git_ai.commands.commit.load_config")
 def test_cli_passes_explicit_files_to_selection_service(
     mock_load_config,
     mock_build_selection_service,
@@ -205,7 +205,7 @@ def test_cli_passes_explicit_files_to_selection_service(
 
     result = cli_runner.invoke(
         app,
-        ["--files", "src/git_ai/cli.py", "--dry-run"],
+        ["commit", "--files", "src/git_ai/cli.py", "--dry-run"],
     )
 
     assert result.exit_code == 0
@@ -214,3 +214,41 @@ def test_cli_passes_explicit_files_to_selection_service(
     )
     assert "Périmètre : fichiers ciblés." in result.stdout
     assert " - src/git_ai/cli.py" in result.stdout
+
+def test_init_creates_default_config_file(cli_runner, tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+
+    result = cli_runner.invoke(app, ["init"])
+
+    assert result.exit_code == 0
+    assert (tmp_path / "git-ai.yaml").exists()
+
+def test_init_writes_custom_values(cli_runner, tmp_path):
+    target = tmp_path / "custom.yaml"
+
+    result = cli_runner.invoke(
+        app,
+        [
+            "init",
+            "--output", str(target),
+            "--lang", "en",
+            "--provider", "ollama",
+            "--model", "mistral",
+            "--push",
+        ],
+    )
+
+    assert result.exit_code == 0
+    content = target.read_text(encoding="utf-8")
+    assert "language: en" in content
+    assert "provider: ollama" in content
+    assert "model: mistral" in content
+    assert "push_after_commit: true" in content
+
+def test_init_refuses_existing_file_without_force(cli_runner, tmp_path):
+    target = tmp_path / "git-ai.yaml"
+    target.write_text("existing", encoding="utf-8")
+
+    result = cli_runner.invoke(app, ["init", "--output", str(target)])
+
+    assert result.exit_code == 2
