@@ -26,7 +26,7 @@ from git_ai.services.prompt_service import PromptService
 
 
 class CLIError(Exception):
-    """Erreur contrôlée côté CLI."""
+    """Controlled CLI-side error."""
 
 
 def _validate_language(lang: str | None) -> str | None:
@@ -137,17 +137,29 @@ def _build_git_diff(selected_files_result) -> GitDiff:
 
 def _print_scope(selected_files_result) -> None:
     if selected_files_result.source == "staged":
-        typer.echo("Périmètre : diff stagé courant.")
+        typer.echo("Current scope: staged diff.")
     else:
-        typer.echo("Périmètre : fichiers ciblés.")
+        typer.echo("Current scope: selected files.")
         for file_path in selected_files_result.files:
             typer.echo(f" - {file_path}")
 
     if selected_files_result.warnings:
         typer.echo("")
-        typer.secho("Avertissements :", fg=typer.colors.YELLOW)
+        typer.secho("Warnings:", fg=typer.colors.YELLOW)
         for warning in selected_files_result.warnings:
             typer.secho(f" - {warning}", fg=typer.colors.YELLOW)
+
+
+def _print_generation_summary(selected_files_result, config, commit_message) -> None:
+    typer.echo("")
+    _print_scope(selected_files_result)
+    typer.echo(
+        f"Language: {config.language} | Provider: {config.provider} | Model: {config.model}"
+    )
+    typer.echo("")
+    typer.echo("Generated commit message:")
+    typer.echo(commit_message.text)
+    typer.echo("")
 
 
 def register_commit_command(app: typer.Typer) -> None:
@@ -157,56 +169,56 @@ def register_commit_command(app: typer.Typer) -> None:
             list[Path] | None,
             typer.Option(
                 "--files",
-                help="Restreint la génération du message à une liste de fichiers ou dossiers.",
+                help="Restrict commit message generation to specific files or directories.",
             ),
         ] = None,
         lang: Annotated[
             str | None,
             typer.Option(
                 "--lang",
-                help="Langue du message de commit : fr, en, es, pt.",
+                help="Commit message language: fr, en, es, pt.",
             ),
         ] = None,
         provider: Annotated[
             str | None,
             typer.Option(
                 "--provider",
-                help="Provider LLM à utiliser (CLI > env > YAML).",
+                help="LLM provider to use (CLI > env > YAML).",
             ),
         ] = None,
         model: Annotated[
             str | None,
             typer.Option(
                 "--model",
-                help="Nom du modèle LLM à utiliser (CLI > env > YAML).",
+                help="LLM model to use (CLI > env > YAML).",
             ),
         ] = None,
         dry_run: Annotated[
             bool,
             typer.Option(
                 "--dry-run",
-                help="Affiche le message sans créer le commit.",
+                help="Display the generated message without creating a commit.",
             ),
         ] = False,
         push: Annotated[
             bool | None,
             typer.Option(
                 "--push/--no-push",
-                help="Surcharge ponctuelle du push après commit.",
+                help="Temporarily override push-after-commit behavior.",
             ),
         ] = None,
         config_path: Annotated[
             Path | None,
             typer.Option(
                 "--config",
-                help="Chemin explicite vers un fichier YAML de configuration.",
+                help="Explicit path to a YAML configuration file.",
             ),
         ] = None,
         repo_path: Annotated[
             Path | None,
             typer.Option(
                 "--repo-path",
-                help="Chemin du dépôt Git ciblé. Par défaut : répertoire courant.",
+                help="Target Git repository path. Defaults to the current directory.",
             ),
         ] = None,
     ) -> None:
@@ -236,7 +248,9 @@ def register_commit_command(app: typer.Typer) -> None:
             git_diff = _build_git_diff(selected_files_result)
 
             if git_diff.is_empty:
-                raise CLIError("Le diff Git est vide. Impossible de générer un commit.")
+                raise CLIError(
+                    "Git diff is empty. Unable to generate a commit message."
+                )
 
             commit_message_service = _build_commit_message_service(config)
 
@@ -248,19 +262,15 @@ def register_commit_command(app: typer.Typer) -> None:
 
             commit_message = commit_message_service.generate(request)
 
-            typer.echo("")
-            _print_scope(selected_files_result)
-            typer.echo(
-                f"Langue : {config.language} | Provider : {config.provider} | Modèle : {config.model}"
+            _print_generation_summary(
+                selected_files_result=selected_files_result,
+                config=config,
+                commit_message=commit_message,
             )
-            typer.echo("")
-            typer.echo("Message généré :")
-            typer.echo(commit_message.text)
-            typer.echo("")
 
             if dry_run:
                 typer.secho(
-                    "Dry-run activé : aucun commit ni push exécuté.",
+                    "Dry-run enabled: no commit or push was executed.",
                     fg=typer.colors.YELLOW,
                 )
                 raise typer.Exit(code=0)
@@ -269,25 +279,25 @@ def register_commit_command(app: typer.Typer) -> None:
                 message=commit_message.text,
                 repo_path=repo_path,
             )
-            typer.secho("Commit créé avec succès.", fg=typer.colors.GREEN)
+            typer.secho("Commit created successfully.", fg=typer.colors.GREEN)
 
             if config.git.push_after_commit:
                 push_current_branch(repo_path=repo_path)
-                typer.secho("Push effectué avec succès.", fg=typer.colors.GREEN)
+                typer.secho("Push completed successfully.", fg=typer.colors.GREEN)
 
         except typer.BadParameter:
             raise
         except typer.Exit:
             raise
         except (ConfigError, CLIError, FileSelectionError, ValueError) as exc:
-            typer.secho(f"Erreur : {exc}", fg=typer.colors.RED, err=True)
+            typer.secho(f"Error: {exc}", fg=typer.colors.RED, err=True)
             raise typer.Exit(code=2) from exc
         except (ProviderError, ProviderResponseError) as exc:
             typer.secho(f"Provider error: {exc}", fg=typer.colors.RED, err=True)
             raise typer.Exit(code=1) from exc
         except FileNotFoundError as exc:
-            typer.secho(f"Fichier manquant : {exc}", fg=typer.colors.RED, err=True)
+            typer.secho(f"Missing file: {exc}", fg=typer.colors.RED, err=True)
             raise typer.Exit(code=1) from exc
         except Exception as exc:
-            typer.secho(f"Erreur inattendue : {exc}", fg=typer.colors.RED, err=True)
+            typer.secho(f"Unexpected error: {exc}", fg=typer.colors.RED, err=True)
             raise typer.Exit(code=1) from exc
