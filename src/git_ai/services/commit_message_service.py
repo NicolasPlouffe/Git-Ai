@@ -1,13 +1,16 @@
 from __future__ import annotations
 
+import json
+
 from git_ai.exceptions import ProviderResponseError
 from git_ai.models import CommitMessage, LLMRequest, LLMResponse, PromptRequest
 from git_ai.providers.base import LLMProvider
 from git_ai.services.prompt_service import PromptService
-import json
+from git_ai.services.scaffold_detection import ScaffoldDetectionService
+
 
 class CommitMessageService:
-    """Orchestre prompt + provider + nettoyage final du message."""
+    """Orchestre détection scaffold + prompt + provider + nettoyage final."""
 
     def __init__(
         self,
@@ -15,45 +18,29 @@ class CommitMessageService:
         prompt_service: PromptService,
         temperature: float = 0.2,
         max_tokens: int | None = 120,
+        scaffold_detection_service: ScaffoldDetectionService | None = None,
     ) -> None:
         self._provider = provider
         self._prompt_service = prompt_service
         self._temperature = temperature
         self._max_tokens = max_tokens
-
-    def _extract_commit_text(self, text: str) -> str:
-        json_commit = self._extract_commit_from_json(text)
-        if json_commit is not None:
-            return json_commit.strip()
-
-        cleaned = text
-        cleaned = self._strip_code_fences(cleaned)
-        cleaned = self._strip_known_prefixes(cleaned)
-        cleaned = self._strip_prompt_echo(cleaned)
-        return cleaned.strip()
-
-    def _extract_commit_from_json(self, text: str) -> str | None:
-        candidate = text.strip()
-
-        try:
-            payload = json.loads(candidate)
-        except json.JSONDecodeError:
-            return None
-
-        if not isinstance(payload, dict):
-            return None
-
-        commit = payload.get("commit")
-        if not isinstance(commit, str):
-            return None
-
-        normalized = commit.strip()
-        return normalized or None
+        self._scaffold_detection_service = scaffold_detection_service
 
     def generate(self, request: PromptRequest) -> CommitMessage:
         """Produit un message de commit propre à partir d'un diff."""
         if request.diff.is_empty:
             raise ValueError("Cannot generate a commit message from an empty diff.")
+
+        fallback = self._detect_scaffold_fallback(request)
+        if fallback is not None:
+            commit_text = self._sanitize_plain_commit_text(
+                text=fallback.commit_text,
+                max_subject_length=request.max_subject_length,
+            )
+            return CommitMessage(
+                text=commit_text,
+                language=request.language,
+            )
 
         prompt_payload = self._prompt_service.build_commit_prompt(request)
 
@@ -73,6 +60,22 @@ class CommitMessageService:
         return CommitMessage(
             text=commit_text,
             language=request.language,
+        )
+
+    def _detect_scaffold_fallback(self, request: PromptRequest):
+        if self._scaffold_detection_service is None:
+            return None
+        return self._scaffold_detection_service.detect(request)
+
+    def _sanitize_plain_commit_text(
+        self,
+        text: str,
+        max_subject_length: int,
+    ) -> str:
+        response = LLMResponse(text=text)
+        return self._sanitize_response(
+            response=response,
+            max_subject_length=max_subject_length,
         )
 
     def _sanitize_response(
@@ -109,6 +112,35 @@ class CommitMessageService:
 
         body = "\n".join(body_lines)
         return f"{subject}\n\n{body}"
+
+    def _extract_commit_text(self, text: str) -> str:
+        json_commit = self._extract_commit_from_json(text)
+        if json_commit is not None:
+            return json_commit.strip()
+
+        cleaned = text
+        cleaned = self._strip_code_fences(cleaned)
+        cleaned = self._strip_known_prefixes(cleaned)
+        cleaned = self._strip_prompt_echo(cleaned)
+        return cleaned.strip()
+
+    def _extract_commit_from_json(self, text: str) -> str | None:
+        candidate = text.strip()
+
+        try:
+            payload = json.loads(candidate)
+        except json.JSONDecodeError:
+            return None
+
+        if not isinstance(payload, dict):
+            return None
+
+        commit = payload.get("commit")
+        if not isinstance(commit, str):
+            return None
+
+        normalized = commit.strip()
+        return normalized or None
 
     def _strip_code_fences(self, text: str) -> str:
         lines = text.splitlines()
