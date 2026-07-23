@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 
 from git_ai.exceptions import ProviderResponseError
 from git_ai.models import CommitMessage, LLMRequest, LLMResponse, PromptRequest
@@ -10,7 +11,15 @@ from git_ai.services.scaffold_detection import ScaffoldDetectionService
 
 
 class CommitMessageService:
-    """Orchestre détection scaffold + prompt + provider + nettoyage final."""
+    """Orchestre detection scaffold + prompt + provider + nettoyage final.
+
+    Contrat principal attendu du provider : un objet JSON valide avec une
+    seule cle "commit", ex. {"commit": "type(scope): sujet"}.
+    Si aucun JSON exploitable n'est trouve, un fallback texte plus tolerant
+    est tente. Si le contenu ressemble a une reponse documentaire/explicative,
+    la generation echoue avec une erreur claire plutot que de produire un
+    commit de mauvaise qualite.
+    """
 
     def __init__(
         self,
@@ -27,7 +36,7 @@ class CommitMessageService:
         self._scaffold_detection_service = scaffold_detection_service
 
     def generate(self, request: PromptRequest) -> CommitMessage:
-        """Produit un message de commit propre à partir d'un diff."""
+        """Produit un message de commit propre a partir d'un diff."""
         if request.diff.is_empty:
             raise ValueError("Cannot generate a commit message from an empty diff.")
 
@@ -78,6 +87,10 @@ class CommitMessageService:
             max_subject_length=max_subject_length,
         )
 
+    # ------------------------------------------------------------------
+    # Sanitization: orchestrateur principal (JSON-first, fallback texte)
+    # ------------------------------------------------------------------
+
     def _sanitize_response(
         self,
         response: LLMResponse,
@@ -86,11 +99,35 @@ class CommitMessageService:
         if response.is_empty:
             raise ProviderResponseError("The provider returned an empty commit message.")
 
-        text = response.text.strip()
-        text = self._extract_commit_text(text)
+        raw_text = response.text.strip()
+
+        if not raw_text:
+            raise ProviderResponseError("The commit message is empty after sanitization.")
+
+        # 1. Contrat principal : JSON direct.
+        commit_value = self._extract_commit_from_json(raw_text)
+
+        # 2. Contrat secondaire : JSON embarque dans un texte plus bruite.
+        if commit_value is None:
+            commit_value = self._extract_embedded_commit_from_json(raw_text)
+
+        if commit_value is not None:
+            return self._sanitize_commit_value(commit_value, max_subject_length)
+
+        # 3. Fallback texte libre, seulement si aucun JSON n'est exploitable.
+        return self._sanitize_text_fallback(raw_text, max_subject_length)
+
+    def _sanitize_commit_value(self, commit_value: str, max_subject_length: int) -> str:
+        text = commit_value.strip()
 
         if not text:
-            raise ProviderResponseError("The commit message is empty after sanitization.")
+            raise ProviderResponseError("The commit value extracted from JSON is empty.")
+
+        if self._looks_like_explanatory_block(text):
+            raise ProviderResponseError(
+                "The provider returned an explanatory or documentation-style response "
+                "instead of a commit message."
+            )
 
         lines = [line.rstrip() for line in text.splitlines()]
         lines = self._drop_leading_empty_lines(lines)
@@ -98,14 +135,13 @@ class CommitMessageService:
         if not lines:
             raise ProviderResponseError("The commit message has no usable content.")
 
-        subject = self._normalize_subject(lines[0])
+        subject, remaining_lines = self._extract_subject_and_body(lines)
+        subject = self._truncate_subject(subject, max_subject_length)
 
         if not subject:
             raise ProviderResponseError("The commit subject is empty.")
 
-        subject = self._truncate_subject(subject, max_subject_length)
-
-        body_lines = self._normalize_body_lines(lines[1:])
+        body_lines = self._normalize_body_lines(remaining_lines)
 
         if not body_lines:
             return subject
@@ -113,25 +149,72 @@ class CommitMessageService:
         body = "\n".join(body_lines)
         return f"{subject}\n\n{body}"
 
-    def _extract_commit_text(self, text: str) -> str:
-        json_commit = self._extract_commit_from_json(text)
-        if json_commit is not None:
-            return json_commit.strip()
+    def _sanitize_text_fallback(self, text: str, max_subject_length: int) -> str:
+        cleaned = self._extract_commit_text(text)
 
-        cleaned = text
-        cleaned = self._strip_code_fences(cleaned)
-        cleaned = self._strip_known_prefixes(cleaned)
-        cleaned = self._strip_prompt_echo(cleaned)
-        return cleaned.strip()
+        if not cleaned:
+            raise ProviderResponseError("The commit message is empty after sanitization.")
+
+        if self._looks_like_explanatory_block(cleaned):
+            raise ProviderResponseError(
+                "The provider returned an explanatory or documentation-style response "
+                "instead of a commit message."
+            )
+
+        lines = [line.rstrip() for line in cleaned.splitlines()]
+        lines = self._drop_leading_empty_lines(lines)
+
+        if not lines:
+            raise ProviderResponseError("The commit message has no usable content.")
+
+        subject, remaining_lines = self._extract_subject_and_body(lines)
+        subject = self._truncate_subject(subject, max_subject_length)
+
+        if not subject:
+            raise ProviderResponseError("The commit subject is empty.")
+
+        body_lines = self._normalize_body_lines(remaining_lines)
+
+        if not body_lines:
+            return subject
+
+        body = "\n".join(body_lines)
+        return f"{subject}\n\n{body}"
+
+    # ------------------------------------------------------------------
+    # Extraction JSON
+    # ------------------------------------------------------------------
 
     def _extract_commit_from_json(self, text: str) -> str | None:
         candidate = text.strip()
+        candidate = self._strip_code_fences(candidate)
+        candidate = candidate.strip()
 
         try:
             payload = json.loads(candidate)
         except json.JSONDecodeError:
             return None
 
+        return self._read_commit_key(payload)
+
+    def _extract_embedded_commit_from_json(self, text: str) -> str | None:
+        """Cherche un objet JSON plausible avec cle "commit" a l'interieur
+        d'un texte plus large (introduction, bruit avant/apres, etc.)."""
+        candidates = re.findall(r"\{[^{}]*\"commit\"[^{}]*\}", text, flags=re.DOTALL)
+
+        for candidate in candidates:
+            try:
+                payload = json.loads(candidate)
+            except json.JSONDecodeError:
+                continue
+
+            commit_value = self._read_commit_key(payload)
+            if commit_value is not None:
+                return commit_value
+
+        return None
+
+    def _read_commit_key(self, payload: object) -> str | None:
         if not isinstance(payload, dict):
             return None
 
@@ -141,6 +224,30 @@ class CommitMessageService:
 
         normalized = commit.strip()
         return normalized or None
+
+    # ------------------------------------------------------------------
+    # Fallback texte libre
+    # ------------------------------------------------------------------
+
+    def _extract_subject_and_body(self, lines: list[str]) -> tuple[str, list[str]]:
+        for index, raw_line in enumerate(lines):
+            candidate = self._normalize_subject_candidate(raw_line)
+            if not candidate:
+                continue
+
+            if self._looks_explanatory(candidate):
+                continue
+
+            return candidate, lines[index + 1:]
+
+        raise ProviderResponseError("The provider did not return a usable commit subject.")
+
+    def _extract_commit_text(self, text: str) -> str:
+        cleaned = text
+        cleaned = self._strip_code_fences(cleaned)
+        cleaned = self._strip_known_prefixes(cleaned)
+        cleaned = self._strip_prompt_echo(cleaned)
+        return cleaned.strip()
 
     def _strip_code_fences(self, text: str) -> str:
         lines = text.splitlines()
@@ -180,7 +287,7 @@ class CommitMessageService:
             index += 1
         return lines[index:]
 
-    def _normalize_subject(self, subject: str) -> str:
+    def _normalize_subject_candidate(self, subject: str) -> str:
         subject = subject.strip().strip('"').strip("'")
         subject = subject.replace("`", "")
         subject = " ".join(subject.split())
@@ -188,25 +295,79 @@ class CommitMessageService:
         if subject.endswith("."):
             subject = subject[:-1].rstrip()
 
+        return subject
+
+    def _looks_explanatory(self, subject: str) -> bool:
         lowered = subject.lower()
+
         explanatory_starts = (
             "voici",
+            "voici un message",
+            "voici le message",
             "il semble",
             "it appears",
             "here is",
+            "here's",
             "this commit",
             "ce commit",
             "esta respuesta",
             "parece que",
+            "commit message",
+            "message de commit",
+            "mensaje de commit",
+            "respuesta",
+            "response",
+            "answer",
         )
 
-        for prefix in explanatory_starts:
-            if lowered.startswith(prefix):
-                raise ProviderResponseError(
-                    "The provider returned an explanatory response instead of a commit subject."
-                )
+        if any(lowered.startswith(prefix) for prefix in explanatory_starts):
+            return True
 
-        return subject
+        if lowered.endswith(":"):
+            return True
+
+        return False
+
+    def _looks_like_explanatory_block(self, text: str) -> bool:
+        lowered = text.lower()
+        lines = [line.strip() for line in text.splitlines() if line.strip()]
+
+        markdown_heading_count = sum(
+            1
+            for line in lines[:6]
+            if line.startswith("#") or (line.startswith("**") and line.endswith("**"))
+        )
+
+        bullet_count = sum(
+            1
+            for line in lines[:8]
+            if line.startswith("* ") or line.startswith("- ")
+        )
+
+        explanatory_markers = (
+            "introduction",
+            "architecture",
+            "summary",
+            "résumé",
+            "resume",
+            "overview",
+            "project",
+            "ce projet",
+            "this project",
+        )
+
+        marker_hits = sum(1 for marker in explanatory_markers if marker in lowered)
+
+        if markdown_heading_count >= 1 and bullet_count >= 1:
+            return True
+
+        if markdown_heading_count >= 2:
+            return True
+
+        if bullet_count >= 3 and marker_hits >= 1:
+            return True
+
+        return False
 
     def _normalize_body_lines(self, lines: list[str]) -> list[str]:
         cleaned_lines: list[str] = []
