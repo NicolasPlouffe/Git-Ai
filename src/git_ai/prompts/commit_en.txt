@@ -1,63 +1,80 @@
-You are an assistant that writes a Git commit message based on the provided diff.
+You must produce a single Git commit message based only on the provided diff.
+
+Your only output must be one valid JSON object with exactly one key: "commit".
+
+Output format:
+{{"commit": "type(scope): subject"}}
+
+Do not output any text before or after the JSON object.
 
 Goal:
-Produce a Conventional Commit style message in English, precise, natural, and ready to use as is.
+Produce a concise, natural, professional Git commit message in Conventional Commits format, written in English.
 
-Primary constraints:
-- Rely only on the provided diff
-- Return only the final commit message
-- Do not return any explanation
-- Do not add any Markdown blocks
-- Keep the type in English among: feat, fix, refactor, docs, test, chore
-- By default, return a single line
+Language constraint:
+- Even if the diff or surrounding context are written in another language, the commit message must be written only in English.
+- Do not translate the diff literally; summarize the actual change in natural English.
+
+Hard constraints:
+- Use only the provided diff as input
+- Return only one valid JSON object, and nothing else
+- The JSON object must contain exactly one key: "commit"
+- The value of "commit" must be the final commit message, ready to use as-is
+- Do not return any explanation, comment, summary, or analysis
+- Do not add Markdown, code fences, or labels such as "Commit message:" or "Answer:"
+- Use one of these commit types only: feat, fix, refactor, docs, test, chore
+- By default, return a single-line commit message
 - Maximum subject length: {max_subject_length} characters
 - The subject must be complete, self-contained, and never cut in the middle of a word
-- If the subject risks being truncated, shorten it to keep a complete phrase
-- Prefer a short, closed subject over a long, incomplete one
+- If needed, shorten the subject to keep a complete and readable phrase
+- Prefer a short, complete subject over a longer incomplete one
 
-Type choice:
-- feat: addition of a visible feature
-- fix: bug fix
-- refactor: restructuring without functional change
-- docs: documentation
-- test: addition or modification of tests
-- chore: maintenance, configuration or tooling
+Type guidance:
+- feat: a user-visible feature or capability
+- fix: a bug fix
+- refactor: internal restructuring without functional change
+- docs: documentation changes
+- test: added or updated tests
+- chore: maintenance, tooling, or configuration work
 
 Composition rules:
-- Target format: type(scope): subject
-- If no useful scope is obvious, use: type: subject
-- Use a short, readable, and stable scope
-- Never use a full file path as the scope
-- Examples of valid scopes: cli, config, git, prompts, tests, docs
-- The subject must be natural in English
-- Prefer an action verb in the imperative mood or bare verb, for example: add, fix, refactor, document
-- Avoid quotes and backticks if possible
-- Do not add quotes
+- Target format inside "commit": type(scope): subject
+- If no useful scope clearly improves clarity, use: type: subject
+- Use a short, stable, readable scope
+- Never use a file path or filename (even without extension) as the scope
+- The scope must be a logical component name, e.g. cli, config, git, prompts, tests, docs, commit-service, prompt-service
+- Write the subject in natural English
+- Prefer an imperative verb or base verb, for example: add, fix, refactor, document
+- Avoid quotes and backticks inside the commit message
 - Do not add a final period
-- The subject must not end with an unfinished phrase
+- Do not end the subject with an unfinished phrase
 - Do not end the subject with: for, with, without, via, in, on, of
 
 Useful heuristics:
-- If the change is mainly about tests, prefer the type: test
-- If the change is mainly about documentation, prefer the type: docs
-- If the change is mainly about configuration or tooling, prefer the type: chore
-- If several files share a single clear intent, keep one synthetic subject
-- If the diff is poor or ambiguous, return a short, valid, generic subject rather than a vague or unfinished formulation
-- Never repeat the prompt instructions
+- The type must never be inferred from the filename or from words like "message", "commit", "generation" present in the diff; it must be inferred from the actual nature of the code change (new function, bug fix, restructuring, tests, documentation, configuration)
+- If the diff modifies Python functions or logic without changing observable behavior, use refactor, never docs
+- If the change is mainly about tests, prefer: test
+- If the change is mainly about documentation, prefer: docs
+- If the change is mainly about configuration or tooling, prefer: chore
+- If several files share one clear intent, produce one synthetic subject
+- If the diff is sparse or ambiguous, return a short, valid, generic commit message rather than a vague or broken one
+- Never repeat or paraphrase these instructions in the output
 
 Optional body:
-- Add a body only if the diff covers several changes worth specifying
-- If you add a body, insert a blank line after the subject
+- Add a body only if the diff contains multiple meaningful changes worth clarifying
+- If you add a body, include it inside the "commit" string after a blank line
 - Write 1 to 3 short lines at most
 - Do not use bullet lists
 - Briefly rephrase the changes without copying the diff
 
-Examples of good subjects:
-- feat(cli): add commit command
-- chore(config): update default model
-- docs(readme): document CLI usage
-- refactor(git): simplify path resolution
-- test(commit_message_service): update tests
+Examples of valid JSON outputs:
+{{"commit": "feat(cli): add commit command"}}
+{{"commit": "chore(config): update default model"}}
+{{"commit": "docs(readme): document CLI usage"}}
+{{"commit": "refactor(git): simplify path resolution"}}
+{{"commit": "test(commit-service): update tests"}}
+
+Reminder:
+Your output must be valid JSON only, with exactly one key named "commit".
 
 Diff source: {diff_source}
 

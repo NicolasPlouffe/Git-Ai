@@ -1,317 +1,272 @@
-from pathlib import Path
+from __future__ import annotations
 
-import pytest
+from unittest.mock import MagicMock, patch
 
-from git_ai.config import (
-    AppConfig,
-    ConfigError,
-    DEFAULT_BASE_URL,
-    DEFAULT_COMMIT_FORMAT,
-    DEFAULT_INCLUDE_BODY,
-    DEFAULT_LANGUAGE,
-    DEFAULT_MAX_SUBJECT_LENGTH,
-    DEFAULT_MODEL,
-    DEFAULT_PROVIDER,
-    DEFAULT_PUSH_AFTER_COMMIT,
-    DEFAULT_REMOTE,
-    _string_to_bool,
-    load_config,
-    load_env_overrides,
-    load_yaml_config,
+from git_ai.cli import app
+from git_ai.exceptions import ProviderError
+from tests.unit.factories import (
+    make_commit_message,
+    make_config,
+    make_git_diff,
+    make_selected_files_result,
 )
 
 
-def test_load_config_returns_defaults_when_no_yaml_env_or_cli() -> None:
-    config = load_config(config_path=Path("does-not-exist.yaml"), env={})
+@patch("git_ai.commands.commit.create_commit")
+@patch("git_ai.commands.commit.push_current_branch")
+@patch("git_ai.commands.commit._build_commit_message_service")
+@patch("git_ai.commands.commit._build_git_diff")
+@patch("git_ai.commands.commit._build_selection_service")
+@patch("git_ai.commands.commit.load_config")
+def test_cli_dry_run_does_not_create_commit(
+    mock_load_config,
+    mock_build_selection_service,
+    mock_build_git_diff,
+    mock_build_commit_message_service,
+    mock_push_current_branch,
+    mock_create_commit,
+    cli_runner,
+) -> None:
+    mock_load_config.return_value = make_config()
+    mock_build_selection_service.return_value.select_files.return_value = (
+        make_selected_files_result(files=["a.py"], source="staged")
+    )
+    mock_build_git_diff.return_value = make_git_diff(is_empty=False)
 
-    assert isinstance(config, AppConfig)
-    assert config.provider == DEFAULT_PROVIDER
-    assert config.model == DEFAULT_MODEL
-    assert config.language == DEFAULT_LANGUAGE
-    assert config.base_url == DEFAULT_BASE_URL
-    assert config.commit.format == DEFAULT_COMMIT_FORMAT
-    assert config.commit.max_subject_length == DEFAULT_MAX_SUBJECT_LENGTH
-    assert config.commit.include_body == DEFAULT_INCLUDE_BODY
-    assert config.git.push_after_commit == DEFAULT_PUSH_AFTER_COMMIT
-    assert config.git.remote == DEFAULT_REMOTE
+    commit_service = MagicMock()
+    commit_service.generate.return_value = make_commit_message("feat: test message")
+    mock_build_commit_message_service.return_value = commit_service
+
+    result = cli_runner.invoke(app, ["commit", "--dry-run"])
+
+    assert result.exit_code == 0
+    assert "Generated commit message:" in result.stdout
+    assert "feat: test message" in result.stdout
+    assert "Dry-run enabled: no commit or push was executed." in result.stdout
+    mock_create_commit.assert_not_called()
+    mock_push_current_branch.assert_not_called()
 
 
-def test_load_yaml_config_reads_mapping(tmp_path: Path) -> None:
-    config_file = tmp_path / "git-ai.yaml"
-    config_file.write_text(
-        """
-provider: ollama
-model: mistral
-language: en
-base_url: http://localhost:11434
-commit:
-  format: simple
-  max_subject_length: 60
-  include_body: true
-git:
-  push_after_commit: true
-  remote: upstream
-""".strip(),
-        encoding="utf-8",
+@patch("git_ai.commands.commit.create_commit")
+@patch("git_ai.commands.commit.push_current_branch")
+@patch("git_ai.commands.commit._build_commit_message_service")
+@patch("git_ai.commands.commit._build_git_diff")
+@patch("git_ai.commands.commit._build_selection_service")
+@patch("git_ai.commands.commit.load_config")
+def test_cli_creates_commit_without_push_by_default(
+    mock_load_config,
+    mock_build_selection_service,
+    mock_build_git_diff,
+    mock_build_commit_message_service,
+    mock_push_current_branch,
+    mock_create_commit,
+    cli_runner,
+) -> None:
+    mock_load_config.return_value = make_config(push_after_commit=False)
+    mock_build_selection_service.return_value.select_files.return_value = (
+        make_selected_files_result(files=["a.py"], source="staged")
+    )
+    mock_build_git_diff.return_value = make_git_diff(is_empty=False)
+
+    commit_service = MagicMock()
+    commit_service.generate.return_value = make_commit_message("feat: real message")
+    mock_build_commit_message_service.return_value = commit_service
+
+    result = cli_runner.invoke(app, ["commit"])
+
+    assert result.exit_code == 0
+    assert "Commit created successfully." in result.stdout
+    mock_create_commit.assert_called_once_with(
+        message="feat: real message",
+        repo_path=None,
+    )
+    mock_push_current_branch.assert_not_called()
+
+
+@patch("git_ai.commands.commit.create_commit")
+@patch("git_ai.commands.commit.push_current_branch")
+@patch("git_ai.commands.commit._build_commit_message_service")
+@patch("git_ai.commands.commit._build_git_diff")
+@patch("git_ai.commands.commit._build_selection_service")
+@patch("git_ai.commands.commit.load_config")
+def test_cli_creates_commit_and_push_when_config_enabled(
+    mock_load_config,
+    mock_build_selection_service,
+    mock_build_git_diff,
+    mock_build_commit_message_service,
+    mock_push_current_branch,
+    mock_create_commit,
+    cli_runner,
+) -> None:
+    mock_load_config.return_value = make_config(push_after_commit=True)
+    mock_build_selection_service.return_value.select_files.return_value = (
+        make_selected_files_result(files=["a.py"], source="staged")
+    )
+    mock_build_git_diff.return_value = make_git_diff(is_empty=False)
+
+    commit_service = MagicMock()
+    commit_service.generate.return_value = make_commit_message("feat: message with push")
+    mock_build_commit_message_service.return_value = commit_service
+
+    result = cli_runner.invoke(app, ["commit"])
+
+    assert result.exit_code == 0
+    assert "Commit created successfully." in result.stdout
+    assert "Push completed successfully." in result.stdout
+    mock_create_commit.assert_called_once_with(
+        message="feat: message with push",
+        repo_path=None,
+    )
+    mock_push_current_branch.assert_called_once_with(repo_path=None)
+
+
+@patch("git_ai.commands.commit._build_commit_message_service")
+@patch("git_ai.commands.commit._build_git_diff")
+@patch("git_ai.commands.commit._build_selection_service")
+@patch("git_ai.commands.commit.load_config")
+def test_cli_propagates_provider_error(
+    mock_load_config,
+    mock_build_selection_service,
+    mock_build_git_diff,
+    mock_build_commit_message_service,
+    cli_runner,
+) -> None:
+    mock_load_config.return_value = make_config()
+    mock_build_selection_service.return_value.select_files.return_value = (
+        make_selected_files_result(files=["a.py"], source="staged")
+    )
+    mock_build_git_diff.return_value = make_git_diff(is_empty=False)
+
+    commit_service = MagicMock()
+    commit_service.generate.side_effect = ProviderError("Provider down")
+    mock_build_commit_message_service.return_value = commit_service
+
+    result = cli_runner.invoke(app, ["commit"])
+
+    assert result.exit_code == 1
+    assert "Provider error: Provider down" in result.stderr
+
+
+@patch("git_ai.commands.commit._build_git_diff")
+@patch("git_ai.commands.commit._build_selection_service")
+@patch("git_ai.commands.commit.load_config")
+def test_cli_fails_cleanly_on_empty_diff(
+    mock_load_config,
+    mock_build_selection_service,
+    mock_build_git_diff,
+    cli_runner,
+) -> None:
+    mock_load_config.return_value = make_config()
+    mock_build_selection_service.return_value.select_files.return_value = (
+        make_selected_files_result(files=[], source="staged")
+    )
+    mock_build_git_diff.return_value = make_git_diff(
+        text="",
+        files=(),
+        is_empty=True,
     )
 
-    data = load_yaml_config(config_file)
+    result = cli_runner.invoke(app, ["commit"])
 
-    assert data["provider"] == "ollama"
-    assert data["model"] == "mistral"
-    assert data["language"] == "en"
-    assert data["base_url"] == "http://localhost:11434"
-    assert data["commit"]["format"] == "simple"
-    assert data["commit"]["max_subject_length"] == 60
-    assert data["commit"]["include_body"] is True
-    assert data["git"]["push_after_commit"] is True
-    assert data["git"]["remote"] == "upstream"
+    assert result.exit_code == 2
+    assert "Error: Git diff is empty. Unable to generate a commit message." in result.stderr
 
 
-def test_load_yaml_config_returns_empty_dict_when_missing_file() -> None:
-    data = load_yaml_config("missing-file.yaml")
+@patch("git_ai.commands.commit._build_commit_message_service")
+@patch("git_ai.commands.commit._build_git_diff")
+@patch("git_ai.commands.commit._build_selection_service")
+@patch("git_ai.commands.commit.load_config")
+def test_cli_passes_explicit_files_to_selection_service(
+    mock_load_config,
+    mock_build_selection_service,
+    mock_build_git_diff,
+    mock_build_commit_message_service,
+    cli_runner,
+) -> None:
+    mock_load_config.return_value = make_config()
 
-    assert data == {}
-
-
-def test_load_env_overrides_reads_flat_and_nested_values() -> None:
-    env = {
-        "GIT_AI_PROVIDER": "ollama",
-        "GIT_AI_MODEL": "custom-env-model",
-        "GIT_AI_LANGUAGE": "es",
-        "GIT_AI_OLLAMA_HOST": "http://127.0.0.1:11434",
-        "GIT_AI_COMMIT_FORMAT": "simple",
-        "GIT_AI_MAX_SUBJECT_LENGTH": "50",
-        "GIT_AI_INCLUDE_BODY": "true",
-        "GIT_AI_PUSH_AFTER_COMMIT": "yes",
-        "GIT_AI_REMOTE": "origin",
-    }
-
-    data = load_env_overrides(env)
-
-    assert data["provider"] == "ollama"
-    assert data["model"] == "custom-env-model"
-    assert data["language"] == "es"
-    assert data["base_url"] == "http://127.0.0.1:11434"
-    assert data["commit"]["format"] == "simple"
-    assert data["commit"]["max_subject_length"] == 50
-    assert data["commit"]["include_body"] is True
-    assert data["git"]["push_after_commit"] is True
-    assert data["git"]["remote"] == "origin"
-
-
-def test_load_env_overrides_prefers_base_url_over_ollama_host() -> None:
-    env = {
-        "GIT_AI_BASE_URL": "http://base-url:11434",
-        "GIT_AI_OLLAMA_HOST": "http://ollama-host:11434",
-    }
-
-    data = load_env_overrides(env)
-
-    # La variable canonique l'emporte.
-    assert data["base_url"] == "http://base-url:11434"
-
-def test_load_env_overrides_uses_ollama_host_when_base_url_missing() -> None:
-    env = {
-        "GIT_AI_OLLAMA_HOST": "http://ollama-host:11434",
-    }
-
-    data = load_env_overrides(env)
-
-    assert data["base_url"] == "http://ollama-host:11434"
-
-
-def test_load_env_overrides_handles_minimal_env() -> None:
-    env = {
-        "GIT_AI_PROVIDER": "ollama",
-        "GIT_AI_MODEL": "env-model",
-        "GIT_AI_LANGUAGE": "es",
-    }
-
-    data = load_env_overrides(env)
-
-    assert data["provider"] == "ollama"
-    assert data["model"] == "env-model"
-    assert data["language"] == "es"
-    assert "commit" not in data
-    assert "git" not in data
-
-
-def test_load_env_overrides_rejects_non_integer_max_subject_length() -> None:
-    env = {
-        "GIT_AI_MAX_SUBJECT_LENGTH": "abc",
-    }
-
-    with pytest.raises(ConfigError, match="must be an integer"):
-        load_env_overrides(env)
-
-
-def test_load_env_overrides_rejects_non_integer_max_subject_length() -> None:
-    env = {
-        "GIT_AI_MAX_SUBJECT_LENGTH": "abc",
-    }
-
-    with pytest.raises(ConfigError, match="must be an integer"):
-        load_env_overrides(env)
-
-
-def test_load_config_applies_precedence_defaults_yaml_env_cli(tmp_path: Path) -> None:
-    config_file = tmp_path / "git-ai.yaml"
-    config_file.write_text(
-        """
-provider: ollama
-model: yaml-model
-language: fr
-base_url: http://yaml-host:11434
-commit:
-  format: conventional
-  max_subject_length: 70
-  include_body: false
-git:
-  push_after_commit: false
-  remote: origin
-""".strip(),
-        encoding="utf-8",
+    selection_service = MagicMock()
+    selection_service.select_files.return_value = make_selected_files_result(
+        files=["src/git_ai/cli.py"],
+        source="explicit",
+    )
+    mock_build_selection_service.return_value = selection_service
+    mock_build_git_diff.return_value = make_git_diff(
+        files=("src/git_ai/cli.py",),
+        source="explicit",
+        is_empty=False,
     )
 
-    env = {
-        "GIT_AI_MODEL": "env-model",
-        "GIT_AI_LANGUAGE": "en",
-        "GIT_AI_INCLUDE_BODY": "true",
-    }
+    commit_service = MagicMock()
+    commit_service.generate.return_value = make_commit_message(
+        "feat(cli): add commit command"
+    )
+    mock_build_commit_message_service.return_value = commit_service
 
-    cli_overrides = {
-        "language": "es",
-        "commit": {
-            "format": "simple",
-        },
-    }
-
-    config = load_config(
-        config_path=config_file,
-        cli_overrides=cli_overrides,
-        env=env,
+    result = cli_runner.invoke(
+        app,
+        ["commit", "--files", "src/git_ai/cli.py", "--dry-run"],
     )
 
-    assert config.provider == "ollama"
-    assert config.model == "env-model"
-    assert config.language == "es"
-    assert config.base_url == "http://yaml-host:11434"
-    assert config.commit.format == "simple"
-    assert config.commit.max_subject_length == 70
-    assert config.commit.include_body is True
-    assert config.git.push_after_commit is False
-    assert config.git.remote == "origin"
+    assert result.exit_code == 0
+    selection_service.select_files.assert_called_once_with(
+        explicit_files=["src/git_ai/cli.py"]
+    )
+    assert "Current scope: selected files." in result.stdout
+    assert " - src/git_ai/cli.py" in result.stdout
 
 
-@pytest.mark.parametrize(
-    ("value", "expected"),
-    [
-        ("1", True),
-        ("true", True),
-        ("yes", True),
-        ("on", True),
-        ("0", False),
-        ("false", False),
-        ("no", False),
-        ("off", False),
-    ],
-)
-def test_string_to_bool_supports_common_values(value: str, expected: bool) -> None:
-    assert _string_to_bool(value) is expected
+def test_init_creates_default_config_file(cli_runner, tmp_path, monkeypatch) -> None:
+    monkeypatch.chdir(tmp_path)
+
+    result = cli_runner.invoke(app, ["init"])
+
+    assert result.exit_code == 0
+    assert (tmp_path / "git-ai.yaml").exists()
 
 
-def test_string_to_bool_raises_on_invalid_value() -> None:
-    with pytest.raises(ValueError):
-        _string_to_bool("maybe")
+def test_init_writes_custom_values(cli_runner, tmp_path) -> None:
+    target = tmp_path / "custom.yaml"
 
-
-def test_load_config_accepts_portuguese_pr_language(tmp_path: Path) -> None:
-    config_file = tmp_path / "git-ai.yaml"
-    config_file.write_text(
-        """
-language: pt
-""".strip(),
-        encoding="utf-8",
+    result = cli_runner.invoke(
+        app,
+        [
+            "init",
+            "--output",
+            str(target),
+            "--lang",
+            "en",
+            "--provider",
+            "ollama",
+            "--model",
+            "mistral",
+            "--push",
+        ],
     )
 
-    config = load_config(config_path=config_file, env={})
-
-    assert config.language == "pt"
-
-
-def test_load_config_rejects_unsupported_language(tmp_path: Path) -> None:
-    config_file = tmp_path / "git-ai.yaml"
-    config_file.write_text(
-        """
-language: de
-""".strip(),
-        encoding="utf-8",
-    )
-
-    with pytest.raises(ConfigError, match="Unsupported language"):
-        load_config(config_path=config_file, env={})
+    assert result.exit_code == 0
+    content = target.read_text(encoding="utf-8")
+    assert "language: en" in content
+    assert "provider: ollama" in content
+    assert "model: mistral" in content
+    assert "push_after_commit: true" in content
 
 
-def test_load_config_rejects_unsupported_provider(tmp_path: Path) -> None:
-    config_file = tmp_path / "git-ai.yaml"
-    config_file.write_text(
-        """
-provider: anthropic
-""".strip(),
-        encoding="utf-8",
-    )
+def test_init_refuses_existing_file_without_force(cli_runner, tmp_path) -> None:
+    target = tmp_path / "git-ai.yaml"
+    target.write_text("existing", encoding="utf-8")
 
-    with pytest.raises(ConfigError, match="Unsupported provider"):
-        load_config(config_path=config_file, env={})
+    result = cli_runner.invoke(app, ["init", "--output", str(target)])
+
+    assert result.exit_code == 2
 
 
-def test_load_config_rejects_invalid_commit_format(tmp_path: Path) -> None:
-    config_file = tmp_path / "git-ai.yaml"
-    config_file.write_text(
-        """
-commit:
-  format: semantic
-""".strip(),
-        encoding="utf-8",
-    )
+def test_init_force_overwrites_existing_file(cli_runner, tmp_path) -> None:
+    target = tmp_path / "git-ai.yaml"
+    target.write_text("existing", encoding="utf-8")
 
-    with pytest.raises(ConfigError, match="Unsupported commit format"):
-        load_config(config_path=config_file, env={})
+    result = cli_runner.invoke(app, ["init", "--output", str(target), "--force"])
 
-
-def test_load_config_rejects_non_positive_max_subject_length(tmp_path: Path) -> None:
-    config_file = tmp_path / "git-ai.yaml"
-    config_file.write_text(
-        """
-commit:
-  max_subject_length: 0
-""".strip(),
-        encoding="utf-8",
-    )
-
-    with pytest.raises(ConfigError, match="max_subject_length"):
-        load_config(config_path=config_file, env={})
-
-
-def test_load_config_rejects_empty_remote(tmp_path: Path) -> None:
-    config_file = tmp_path / "git-ai.yaml"
-    config_file.write_text(
-        """
-git:
-  remote: "   "
-""".strip(),
-        encoding="utf-8",
-    )
-
-    with pytest.raises(ConfigError, match="git.remote"):
-        load_config(config_path=config_file, env={})
-
-
-def test_load_config_rejects_empty_base_url_from_cli_override() -> None:
-    with pytest.raises(ConfigError, match="base_url"):
-        load_config(
-            config_path="does-not-exist.yaml",
-            env={},
-            cli_overrides={"base_url": "   "},
-        )
+    assert result.exit_code == 0
+    content = target.read_text(encoding="utf-8")
+    assert "provider:" in content

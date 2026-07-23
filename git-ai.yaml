@@ -1,6 +1,6 @@
 provider: ollama
-model: qwen2.5-coder:7b
-language: fr
+model: llama3.1:8b
+language: en
 base_url: http://localhost:11434
 
 commit:

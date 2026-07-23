@@ -1,114 +1,242 @@
-# Git AI Commit Assistant
+# Git-AI : Commit Assistant
 
-Git AI Commit Assistant est un outil CLI Python local-first qui génère des messages de commit Git à partir d’un diff en s’appuyant sur un LLM local.
+> Outil CLI Python **local-first** pour générer des messages de commit Git à partir d’un diff, avec un **LLM local**.
+>
+> Pensé à la fois comme un vrai outil de workflow développeur et comme un projet portfolio en **AI engineering**.
 
-Le projet a deux objectifs :
-- être utile dans un vrai workflow développeur ;
-- servir de projet portfolio en AI engineering, avec une architecture modulaire, testable et lisible.
+## Aperçu
 
-## Objectif
+Git-AI aide à rédiger des messages de commit plus vite, tout en gardant le contrôle sur l’inférence, la configuration et l’environnement d’exécution.
 
-Réduire le temps passé à écrire des messages de commit tout en gardant :
-- un contrôle local sur l’inférence ;
-- une configuration explicite ;
-- une intégration simple avec Git.
+La V1 se concentre sur un périmètre simple et utile : génération depuis le diff stagé, ciblage de fichiers, choix de langue, prévisualisation, commit, push optionnel et intégration avec **Ollama** comme provider local par défaut.
 
-## MVP V1
+## Points clés
 
-La V1 couvre :
-- la commande `commit` ;
-- la génération depuis le diff stagé ;
-- l’option `--files` pour cibler des fichiers précis ;
-- l’option `--lang` pour choisir `fr`, `en` ou `es` ;
-- l’option `--dry-run` pour prévisualiser sans committer ;
-- l’option `--push` pour pousser après le commit ;
-- le provider Ollama ;
-- la configuration via YAML + variables d’environnement + options CLI ;
-- des tests unitaires de base ;
-- un wrapper Bash/Zsh minimal.
+- Génération de message de commit à partir du diff Git stagé.
+- Ciblage de fichiers précis avec `--files`.
+- Sortie multilingue : français, anglais, espagnol.
+- Provider local par défaut : **Ollama**.
+- Configuration par défaut + YAML + variables d’environnement + options CLI.
+- Architecture modulaire, testable et extensible.
+- Tests unitaires et d’intégration sur les flux critiques.
 
-## Positionnement
+## Prérequis
 
-Ce projet n’est pas un simple script shell :
-- la logique métier reste en Python ;
-- le wrapper shell est volontairement fin ;
-- l’architecture prépare l’ajout d’autres providers locaux comme llama.cpp server.
+Avant d’utiliser Git-AI, assurez-vous de disposer de :
 
-## Architecture
+- [Python 3.11](https://www.python.org/downloads/) installé sur votre machine.
+- [Git](https://git-scm.com/downloads).
+- [Ollama](https://ollama.com/download) installé localement.
+- Au moins un modèle disponible dans Ollama.
 
-Le projet est organisé autour de responsabilités claires :
+> Git-AI fonctionne en local et utilise par défaut Ollama comme provider LLM.
 
-- `src/git_ai/cli.py` : point d’entrée CLI.
-- `src/git_ai/config.py` : chargement et fusion de la configuration.
-- `src/git_ai/providers/` : abstraction provider + implémentations concrètes.
-- `src/git_ai/git/` : encapsulation des opérations Git.
-- `src/git_ai/services/` : orchestration métier.
-- `src/git_ai/prompts/` : templates de prompts multilingues.
-- `tests/unit/` : tests unitaires.
-- `tests/integration/` : tests d’intégration ciblés.
+## Installer Ollama
 
-Voir aussi `docs/architecture.md`.
+### Liens utiles
 
-## Flux d’exécution
+- Page officielle de téléchargement : <https://ollama.com/download>
+- Quickstart Ollama : <https://docs.ollama.com/quickstart>
 
-Exemple simplifié de la commande `commit` :
+### Windows
 
-1. charger la configuration ;
-2. résoudre le périmètre (`staged` ou `--files`) ;
-3. produire le diff Git ;
-4. construire le prompt selon la langue ;
-5. appeler le provider local ;
-6. nettoyer et valider le message ;
-7. afficher, committer, puis éventuellement pousser.
+Dans **PowerShell**, exécuter :
+
+```powershell
+irm https://ollama.com/install.ps1 | iex
+```
+
+Ou utiliser l’installateur graphique depuis la page officielle. Ollama nécessite Windows 10 ou plus récent.
+
+### macOS
+
+Dans le terminal :
+
+```bash
+curl -fsSL https://ollama.com/install.sh | sh
+```
+
+Il est aussi possible d’utiliser l’application téléchargée depuis le site officiel.
+
+### Linux
+
+Dans le terminal :
+
+```bash
+curl -fsSL https://ollama.com/install.sh | sh
+```
+
+Cette méthode est la voie d’installation recommandée pour Linux.
+
+### Vérifier l’installation
+
+```bash
+ollama --version
+```
+
+### Démarrer le service local
+
+```bash
+ollama serve
+```
+
+Selon le système, Ollama peut déjà être lancé automatiquement après installation. L’URL locale attendue par défaut est :
+
+```text
+http://localhost:11434
+```
+
+### Installer le modèle recommandé
+
+Pour démarrer rapidement :
+
+```bash
+ollama pull llama3.1:8b
+```
+
+Option orientée code :
+
+```bash
+ollama pull qwen2.5-coder:7b
+```
+
+Vérifier les modèles disponibles :
+
+```bash
+ollama list
+```
+
+## Essayer en 5 minutes
+
+1. Installer Ollama et un modèle (`llama3.1:8b` ou `qwen2.5-coder:7b`).
+2. Démarrer le service local :
+
+   ```bash
+   ollama serve
+   ```
+
+3. Installer Git-AI avec `pipx` :
+
+   ```bash
+   pipx install "git+https://gitlab.com/NPlouffe/git-ai.git"
+   ```
+
+4. Vérifier la commande :
+
+   ```bash
+   git-ai --help
+   ```
+
+5. Générer une première prévisualisation :
+
+   ```bash
+   git-ai commit --dry-run
+   ```
+
+## Fonctionnalités V1
+
+| Fonctionnalité      | Description                                 |
+|---------------------|---------------------------------------------|
+| `git-ai commit`     | Génère un message à partir du diff stagé.   |
+| `--files`           | Limite la génération à des fichiers ciblés. |
+| `--lang`            | Permet de choisir la langue de sortie.      |
+| `--dry-run`         | Prévisualise sans créer de commit.          |
+| `--push`            | Effectue un push après le commit si demandé.|
+| Provider Ollama     | Utilise un backend local par défaut.        |
+| Config multi-source | Fusion des défauts, YAML, env et CLI.      |
 
 ## Installation
 
-### Prérequis
+### Option recommandée — `pipx` depuis GitLab
 
-- Python 3.11+
-- Git
-- Ollama installé localement
-- un modèle disponible dans Ollama
-
-### Installation locale
+Cette option est la plus simple pour un utilisateur qui veut essayer l’outil sans ouvrir un environnement de développement local.
 
 ```bash
-git clone <repo-url>
-cd git-ai-commit
+pipx install "git+https://gitlab.com/NPlouffe/git-ai.git"
+```
+
+### Option développement — clonage local
+
+Pour contribuer au projet ou explorer le code :
+
+```bash
+git clone "https://gitlab.com/NPlouffe/git-ai.git"
+cd git-ai
 python -m venv .venv
 source .venv/bin/activate
 pip install -e .
 ```
 
+### Option développement avec dépendances complètes
+
+```bash
+git clone "https://gitlab.com/NPlouffe/git-ai.git"
+cd git-ai
+python -m venv .venv
+source .venv/bin/activate
+pip install -e .[dev]
+```
+
+Dépendances de développement principales : `pytest`, `pytest-cov`, `ruff`, `mypy`.
+
+### Option locale avec `pipx`
+
+Si le dépôt est déjà cloné :
+
+```bash
+pipx install .
+```
+
+### Vérification post-installation
+
+```bash
+git-ai --help
+```
+
 ## Configuration
 
-Le chargement suit cet ordre de priorité :
-1. valeurs par défaut ;
-2. fichier YAML ;
-3. variables d’environnement ;
-4. options CLI.
+Ordre de priorité de chargement :
 
-Exemple de fichier `git-ai.yaml` :
+1. Valeurs par défaut.
+2. Fichier YAML.
+3. Variables d’environnement.
+4. Options CLI.
+
+### Exemple `git-ai.yaml`
 
 ```yaml
 provider: ollama
-base_url: http://localhost:11434/v1
-model: qwen2.5-coder:7b
-language: fr
-
+model: llama3.1:8b
+language: en
+base_url: http://localhost:11434
 commit:
   format: conventional
   max_subject_length: 72
-  include_body: true
-
+  include_body: false
 git:
   push_after_commit: false
   remote: origin
 ```
 
+Variables d’environnement prévues dans l’exemple de projet : `GITAI_PROVIDER`, `GITAI_MODEL`, `GITAI_OLLAMA_HOST`, `GITAI_LANGUAGE`.
+
+### Paramètres principaux
+
+| Paramètre                 | Rôle                                      |
+|---------------------------|-------------------------------------------|
+| `provider`                | Backend LLM utilisé.                      |
+| `model`                   | Modèle invoqué localement.               |
+| `language`                | Langue de sortie du message.             |
+| `base_url`                | URL du backend local Ollama ou compatible. |
+| `commit.format`           | Format du message, par exemple `conventional`. |
+| `commit.max_subject_length` | Longueur maximale du sujet.           |
+| `commit.include_body`     | Ajoute ou non un corps au commit.        |
+| `git.push_after_commit`   | Active le push automatique après commit. |
+| `git.remote`              | Définit le remote Git ciblé.             |
+
 ## Utilisation
 
-### Générer un commit depuis le staging
+### Générer depuis le staging
 
 ```bash
 git-ai commit
@@ -129,22 +257,50 @@ git-ai commit --files src/git_ai/cli.py tests/unit/test_cli.py
 ### Changer la langue
 
 ```bash
+git-ai commit --lang fr
 git-ai commit --lang en
 ```
 
-### Commit + push
+### Commit puis push
 
 ```bash
 git-ai commit --push
 ```
 
+## Architecture
+
+Le projet est organisé autour de responsabilités claires :
+
+- `src/git_ai/cli.py` : point d’entrée CLI.
+- `src/git_ai/config.py` : chargement, fusion et validation de la configuration.
+- `src/git_ai/providers/` : contrat provider et implémentations concrètes.
+- `src/git_ai/git/` : encapsulation des opérations Git nécessaires.
+- `src/git_ai/services/` : orchestration métier, sélection de fichiers, prompts, normalisation, détection de scaffold.
+- `src/git_ai/prompts/` : prompts multilingues pour commit et PR.
+- `tests/unit/` et `tests/integration/` : couverture des scénarios clés.
+
+### Flux simplifié de `commit`
+
+1. Charger la configuration.
+2. Déterminer le périmètre : staging courant ou `--files`.
+3. Produire le diff Git.
+4. Construire le prompt dans la langue demandée.
+5. Appeler le provider local.
+6. Nettoyer et valider le message généré.
+7. Afficher, committer, puis éventuellement pousser.
+
 ## Tests
+
+Le projet contient des tests unitaires et d’intégration pour la CLI, la configuration, les modèles, le provider Ollama, la couche Git, la sélection de fichiers et le flux de langue.
+
+### Exécuter toute la suite
 
 ```bash
 pytest
 ```
 
-Ou pour séparer :
+### Exécuter par catégorie
+
 ```bash
 pytest tests/unit
 pytest tests/integration
@@ -152,24 +308,27 @@ pytest tests/integration
 
 ## Roadmap
 
-### V2 prévue
-- provider llama.cpp ;
+Axes déjà identifiés pour la suite :
+
+- provider `llama.cpp` ;
 - sélection interactive de fichiers ;
 - génération de PR ;
 - profils de configuration ;
 - exclusions de fichiers ;
 - hooks Git.
 
-## Pourquoi ce projet est intéressant
+## Positionnement portfolio
 
-- Intégration d’un LLM local dans un outil développeur concret.
-- Architecture Python modulaire et extensible.
-- Gestion propre de la configuration multi-source.
-- Séparation nette entre orchestration métier et détails d’infrastructure.
-- Bon support pour démonstration technique et portfolio.
+Git-AI est aussi un projet de démonstration d’AI engineering appliqué :
 
-## Documentation
+- usage concret d’un LLM local dans un workflow développeur ;
+- architecture Python modulaire et extensible ;
+- configuration multi-source propre ;
+- séparation claire entre logique métier et infrastructure.
+
+## Documentation complémentaire
 
 - `docs/architecture.md`
-- `docs/demo-plan.md`
-- `docs/portfolio-notes.md`
+- `docs/config.md`
+- `docs/prompts.md`
+- `docs/roadmap.md`

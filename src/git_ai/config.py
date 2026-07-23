@@ -10,19 +10,29 @@ import yaml
 
 DEFAULT_CONFIG_FILENAMES = ("git-ai.yaml", "git-ai.yml")
 
-SUPPORTED_PROVIDERS = {"ollama", "llamacpp", "openai-compatible"}
-SUPPORTED_LANGUAGES = {"fr", "en", "es", "pt"}
+AVAILABLE_MODELS = {"llama3.1:8b", "qwen2.5-coder:7b"}
 SUPPORTED_COMMIT_FORMATS = {"conventional", "simple"}
+SUPPORTED_LANGUAGES = {"fr", "en", "es", "pt"}
+SUPPORTED_PROVIDERS = {"ollama", "llamacpp", "openai-compatible"}
 
-DEFAULT_PROVIDER: str = "ollama"
-DEFAULT_MODEL: str = "qwen2.5-coder:7b"
-DEFAULT_LANGUAGE: str = "fr"
-DEFAULT_BASE_URL: str = "http://localhost:11434"
-DEFAULT_COMMIT_FORMAT: str = "conventional"
-DEFAULT_MAX_SUBJECT_LENGTH: int = 72
-DEFAULT_INCLUDE_BODY: bool = False
-DEFAULT_PUSH_AFTER_COMMIT: bool = False
-DEFAULT_REMOTE: str = "origin"
+DEFAULT_BASE_URL = "http://localhost:11434"
+DEFAULT_COMMIT_FORMAT = "conventional"
+DEFAULT_INCLUDE_BODY = False
+DEFAULT_LANGUAGE = "en"
+DEFAULT_MAX_SUBJECT_LENGTH = 72
+DEFAULT_MODEL = "llama3.1:8b"
+DEFAULT_PROVIDER = "ollama"
+DEFAULT_PUSH_AFTER_COMMIT = False
+DEFAULT_REMOTE = "origin"
+
+DEFAULT_SCAFFOLD_DETECTION_ENABLED = True
+DEFAULT_SCAFFOLD_MIN_ADDED_FILES = 8
+DEFAULT_SCAFFOLD_MIN_ADDED_RATIO = 0.75
+DEFAULT_SCAFFOLD_MAX_NON_ADDED_FILES = 2
+DEFAULT_SCAFFOLD_MIN_CONFIDENCE = 0.55
+DEFAULT_SCAFFOLD_LARGE_COMMIT_ADDED_FILES = 20
+DEFAULT_SCAFFOLD_LARGE_COMMIT_ADDED_RATIO = 0.85
+DEFAULT_SCAFFOLD_IGNORE_IDE_FILES = True
 
 
 class ConfigError(ValueError):
@@ -58,6 +68,41 @@ class GitConfig:
 
 
 @dataclass(slots=True)
+class ScaffoldDetectionConfig:
+    enabled: bool = DEFAULT_SCAFFOLD_DETECTION_ENABLED
+    min_added_files: int = DEFAULT_SCAFFOLD_MIN_ADDED_FILES
+    min_added_ratio: float = DEFAULT_SCAFFOLD_MIN_ADDED_RATIO
+    max_non_added_files: int = DEFAULT_SCAFFOLD_MAX_NON_ADDED_FILES
+    min_confidence: float = DEFAULT_SCAFFOLD_MIN_CONFIDENCE
+    large_commit_added_files: int = DEFAULT_SCAFFOLD_LARGE_COMMIT_ADDED_FILES
+    large_commit_added_ratio: float = DEFAULT_SCAFFOLD_LARGE_COMMIT_ADDED_RATIO
+    ignore_ide_files: bool = DEFAULT_SCAFFOLD_IGNORE_IDE_FILES
+
+    def __post_init__(self) -> None:
+        if self.min_added_files < 0:
+            raise ConfigError("scaffold_detection.min_added_files must be >= 0.")
+
+        if not 0 <= self.min_added_ratio <= 1:
+            raise ConfigError("scaffold_detection.min_added_ratio must be between 0 and 1.")
+
+        if self.max_non_added_files < 0:
+            raise ConfigError("scaffold_detection.max_non_added_files must be >= 0.")
+
+        if not 0 <= self.min_confidence <= 1:
+            raise ConfigError("scaffold_detection.min_confidence must be between 0 and 1.")
+
+        if self.large_commit_added_files < 0:
+            raise ConfigError(
+                "scaffold_detection.large_commit_added_files must be >= 0."
+            )
+
+        if not 0 <= self.large_commit_added_ratio <= 1:
+            raise ConfigError(
+                "scaffold_detection.large_commit_added_ratio must be between 0 and 1."
+            )
+
+
+@dataclass(slots=True)
 class AppConfig:
     provider: str = DEFAULT_PROVIDER
     model: str = DEFAULT_MODEL
@@ -65,6 +110,9 @@ class AppConfig:
     base_url: str = DEFAULT_BASE_URL
     commit: CommitConfig = field(default_factory=CommitConfig)
     git: GitConfig = field(default_factory=GitConfig)
+    scaffold_detection: ScaffoldDetectionConfig = field(
+        default_factory=ScaffoldDetectionConfig
+    )
 
     def __post_init__(self) -> None:
         if self.provider not in SUPPORTED_PROVIDERS:
@@ -88,158 +136,25 @@ class AppConfig:
             raise ConfigError("model must not be empty.")
 
     @classmethod
-    def defaults(cls) -> "AppConfig":
+    def defaults(cls) -> AppConfig:
         return cls()
-
-
-def _deep_merge(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]:
-    merged = dict(base)
-
-    for key, value in override.items():
-        if key in merged and isinstance(merged[key], dict) and isinstance(value, dict):
-            merged[key] = _deep_merge(merged[key], value)
-        else:
-            merged[key] = value
-
-    return merged
-
-
-def _string_to_bool(value: str) -> bool:
-    normalized = value.strip().lower()
-
-    if normalized in {"1", "true", "yes", "on"}:
-        return True
-    if normalized in {"0", "false", "no", "off"}:
-        return False
-
-    raise ValueError(f"Invalid boolean value: {value}")
-
-
-def _coerce_bool(value: Any) -> bool:
-    if isinstance(value, bool):
-        return value
-
-    if isinstance(value, str):
-        return _string_to_bool(value)
-
-    if isinstance(value, int):
-        return bool(value)
-
-    raise ConfigError(f"Invalid boolean value: {value!r}")
-
-
-def _find_default_config_path(cwd: Path | None = None) -> Path | None:
-    search_root = cwd or Path.cwd()
-
-    for filename in DEFAULT_CONFIG_FILENAMES:
-        candidate = search_root / filename
-        if candidate.exists():
-            return candidate
-
-    return None
-
-
-def load_yaml_config(config_path: str | Path | None = None) -> dict[str, Any]:
-    if config_path is None:
-        path = _find_default_config_path()
-        if path is None:
-            return {}
-    else:
-        path = Path(config_path)
-
-    if not path.exists():
-        return {}
-
-    with path.open("r", encoding="utf-8") as handle:
-        data = yaml.safe_load(handle) or {}
-
-    if not isinstance(data, dict):
-        raise ConfigError("YAML config root must be a mapping/object.")
-
-    return data
-
-
-def load_env_overrides(env: dict[str, str] | None = None) -> dict[str, Any]:
-    source = env or os.environ
-    result: dict[str, Any] = {}
-
-    if provider := source.get("GIT_AI_PROVIDER"):
-        result["provider"] = provider
-
-    if model := source.get("GIT_AI_MODEL"):
-        result["model"] = model
-
-    if language := source.get("GIT_AI_LANGUAGE"):
-        result["language"] = language
-
-    # Variable canonique pour l'URL du backend.
-    if base_url := source.get("GIT_AI_BASE_URL"):
-        result["base_url"] = base_url
-    elif ollama_host := source.get("GIT_AI_OLLAMA_HOST"):
-        # Alias de compatibilité pour Ollama.
-        result["base_url"] = ollama_host
-
-    commit: dict[str, Any] = {}
-
-    if commit_format := source.get("GIT_AI_COMMIT_FORMAT"):
-        commit["format"] = commit_format
-
-    if max_subject_length := source.get("GIT_AI_MAX_SUBJECT_LENGTH"):
-        try:
-            commit["max_subject_length"] = int(max_subject_length)
-        except ValueError as exc:
-            raise ConfigError(
-                "GIT_AI_MAX_SUBJECT_LENGTH must be an integer."
-            ) from exc
-
-    if include_body := source.get("GIT_AI_INCLUDE_BODY"):
-        commit["include_body"] = _string_to_bool(include_body)
-
-    if commit:
-        result["commit"] = commit
-
-    git: dict[str, Any] = {}
-
-    if push_after_commit := source.get("GIT_AI_PUSH_AFTER_COMMIT"):
-        git["push_after_commit"] = _string_to_bool(push_after_commit)
-
-    if remote := source.get("GIT_AI_REMOTE"):
-        git["remote"] = remote
-
-    if git:
-        result["git"] = git
-
-    return result
-
-
-def _config_to_dict(config: AppConfig) -> dict[str, Any]:
-    return {
-        "provider": config.provider,
-        "model": config.model,
-        "language": config.language,
-        "base_url": config.base_url,
-        "commit": {
-            "format": config.commit.format,
-            "max_subject_length": config.commit.max_subject_length,
-            "include_body": config.commit.include_body,
-        },
-        "git": {
-            "push_after_commit": config.git.push_after_commit,
-            "remote": config.git.remote,
-        },
-    }
 
 
 def _build_app_config(raw: dict[str, Any]) -> AppConfig:
     defaults = AppConfig.defaults()
+
     commit_raw = raw.get("commit", {})
     git_raw = raw.get("git", {})
+    scaffold_raw = raw.get("scaffold_detection", {})
 
     if not isinstance(commit_raw, dict):
         raise ConfigError("commit config must be a mapping/object.")
 
     if not isinstance(git_raw, dict):
         raise ConfigError("git config must be a mapping/object.")
+
+    if not isinstance(scaffold_raw, dict):
+        raise ConfigError("scaffold_detection config must be a mapping/object.")
 
     try:
         max_subject_length = int(
@@ -250,6 +165,48 @@ def _build_app_config(raw: dict[str, Any]) -> AppConfig:
         )
     except (TypeError, ValueError) as exc:
         raise ConfigError("commit.max_subject_length must be an integer.") from exc
+
+    try:
+        min_added_files = int(
+            scaffold_raw.get(
+                "min_added_files",
+                defaults.scaffold_detection.min_added_files,
+            )
+        )
+        max_non_added_files = int(
+            scaffold_raw.get(
+                "max_non_added_files",
+                defaults.scaffold_detection.max_non_added_files,
+            )
+        )
+        large_commit_added_files = int(
+            scaffold_raw.get(
+                "large_commit_added_files",
+                defaults.scaffold_detection.large_commit_added_files,
+            )
+        )
+        min_added_ratio = float(
+            scaffold_raw.get(
+                "min_added_ratio",
+                defaults.scaffold_detection.min_added_ratio,
+            )
+        )
+        min_confidence = float(
+            scaffold_raw.get(
+                "min_confidence",
+                defaults.scaffold_detection.min_confidence,
+            )
+        )
+        large_commit_added_ratio = float(
+            scaffold_raw.get(
+                "large_commit_added_ratio",
+                defaults.scaffold_detection.large_commit_added_ratio,
+            )
+        )
+    except (TypeError, ValueError) as exc:
+        raise ConfigError(
+            "scaffold_detection numeric values must be valid integers/floats."
+        ) from exc
 
     return AppConfig(
         provider=raw.get("provider", defaults.provider),
@@ -272,16 +229,112 @@ def _build_app_config(raw: dict[str, Any]) -> AppConfig:
             ),
             remote=git_raw.get("remote", defaults.git.remote),
         ),
+        scaffold_detection=ScaffoldDetectionConfig(
+            enabled=_coerce_bool(
+                scaffold_raw.get(
+                    "enabled",
+                    defaults.scaffold_detection.enabled,
+                )
+            ),
+            min_added_files=min_added_files,
+            min_added_ratio=min_added_ratio,
+            max_non_added_files=max_non_added_files,
+            min_confidence=min_confidence,
+            large_commit_added_files=large_commit_added_files,
+            large_commit_added_ratio=large_commit_added_ratio,
+            ignore_ide_files=_coerce_bool(
+                scaffold_raw.get(
+                    "ignore_ide_files",
+                    defaults.scaffold_detection.ignore_ide_files,
+                )
+            ),
+        ),
     )
+
+
+def _coerce_bool(value: Any) -> bool:
+    if isinstance(value, bool):
+        return value
+
+    if isinstance(value, str):
+        return _string_to_bool(value)
+
+    if isinstance(value, int):
+        return bool(value)
+
+    raise ConfigError(f"Invalid boolean value: {value!r}")
+
+
+def _config_to_dict(config: AppConfig) -> dict[str, Any]:
+    return {
+        "provider": config.provider,
+        "model": config.model,
+        "language": config.language,
+        "base_url": config.base_url,
+        "commit": {
+            "format": config.commit.format,
+            "max_subject_length": config.commit.max_subject_length,
+            "include_body": config.commit.include_body,
+        },
+        "git": {
+            "push_after_commit": config.git.push_after_commit,
+            "remote": config.git.remote,
+        },
+        "scaffold_detection": {
+            "enabled": config.scaffold_detection.enabled,
+            "min_added_files": config.scaffold_detection.min_added_files,
+            "min_added_ratio": config.scaffold_detection.min_added_ratio,
+            "max_non_added_files": config.scaffold_detection.max_non_added_files,
+            "min_confidence": config.scaffold_detection.min_confidence,
+            "large_commit_added_files": config.scaffold_detection.large_commit_added_files,
+            "large_commit_added_ratio": config.scaffold_detection.large_commit_added_ratio,
+            "ignore_ide_files": config.scaffold_detection.ignore_ide_files,
+        },
+    }
+
+
+def _deep_merge(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]:
+    merged = dict(base)
+
+    for key, value in override.items():
+        if key in merged and isinstance(merged[key], dict) and isinstance(value, dict):
+            merged[key] = _deep_merge(merged[key], value)
+        else:
+            merged[key] = value
+
+    return merged
+
+
+def _find_default_config_path(cwd: Path | None = None) -> Path | None:
+    search_root = cwd or Path.cwd()
+
+    for filename in DEFAULT_CONFIG_FILENAMES:
+        candidate = search_root / filename
+        if candidate.exists():
+            return candidate
+
+    return None
+
+
+def _string_to_bool(value: str) -> bool:
+    normalized = value.strip().lower()
+
+    if normalized in {"1", "true", "yes", "on"}:
+        return True
+    if normalized in {"0", "false", "no", "off"}:
+        return False
+
+    raise ConfigError(f"Invalid boolean value: {value}")
 
 
 def load_config(
     config_path: str | Path | None = None,
     cli_overrides: dict[str, Any] | None = None,
     env: dict[str, str] | None = None,
+    cwd: Path | None = None,
 ) -> AppConfig:
     defaults = _config_to_dict(AppConfig.defaults())
-    yaml_config = load_yaml_config(config_path)
+    yaml_config = load_yaml_config(config_path=config_path, cwd=cwd)
     env_config = load_env_overrides(env)
     cli_config = cli_overrides or {}
 
@@ -290,3 +343,134 @@ def load_config(
     merged = _deep_merge(merged, cli_config)
 
     return _build_app_config(merged)
+
+
+def load_env_overrides(env: dict[str, str] | None = None) -> dict[str, Any]:
+    source = env or os.environ
+    result: dict[str, Any] = {}
+
+    if provider := source.get("GIT_AI_PROVIDER"):
+        result["provider"] = provider
+
+    if model := source.get("GIT_AI_MODEL"):
+        result["model"] = model
+
+    if language := source.get("GIT_AI_LANGUAGE"):
+        result["language"] = language
+
+    if base_url := source.get("GIT_AI_BASE_URL"):
+        result["base_url"] = base_url
+    elif ollama_host := source.get("GIT_AI_OLLAMA_HOST"):
+        result["base_url"] = ollama_host
+
+    commit: dict[str, Any] = {}
+
+    if commit_format := source.get("GIT_AI_COMMIT_FORMAT"):
+        commit["format"] = commit_format
+
+    if max_subject_length := source.get("GIT_AI_MAX_SUBJECT_LENGTH"):
+        try:
+            commit["max_subject_length"] = int(max_subject_length)
+        except ValueError as exc:
+            raise ConfigError("GIT_AI_MAX_SUBJECT_LENGTH must be an integer.") from exc
+
+    if include_body := source.get("GIT_AI_INCLUDE_BODY"):
+        commit["include_body"] = _string_to_bool(include_body)
+
+    if commit:
+        result["commit"] = commit
+
+    git: dict[str, Any] = {}
+
+    if push_after_commit := source.get("GIT_AI_PUSH_AFTER_COMMIT"):
+        git["push_after_commit"] = _string_to_bool(push_after_commit)
+
+    if remote := source.get("GIT_AI_REMOTE"):
+        git["remote"] = remote
+
+    if git:
+        result["git"] = git
+
+    scaffold_detection: dict[str, Any] = {}
+
+    if enabled := source.get("GIT_AI_SCAFFOLD_DETECTION_ENABLED"):
+        scaffold_detection["enabled"] = _string_to_bool(enabled)
+
+    if min_added_files := source.get("GIT_AI_SCAFFOLD_MIN_ADDED_FILES"):
+        try:
+            scaffold_detection["min_added_files"] = int(min_added_files)
+        except ValueError as exc:
+            raise ConfigError(
+                "GIT_AI_SCAFFOLD_MIN_ADDED_FILES must be an integer."
+            ) from exc
+
+    if min_added_ratio := source.get("GIT_AI_SCAFFOLD_MIN_ADDED_RATIO"):
+        try:
+            scaffold_detection["min_added_ratio"] = float(min_added_ratio)
+        except ValueError as exc:
+            raise ConfigError(
+                "GIT_AI_SCAFFOLD_MIN_ADDED_RATIO must be a float."
+            ) from exc
+
+    if max_non_added_files := source.get("GIT_AI_SCAFFOLD_MAX_NON_ADDED_FILES"):
+        try:
+            scaffold_detection["max_non_added_files"] = int(max_non_added_files)
+        except ValueError as exc:
+            raise ConfigError(
+                "GIT_AI_SCAFFOLD_MAX_NON_ADDED_FILES must be an integer."
+            ) from exc
+
+    if min_confidence := source.get("GIT_AI_SCAFFOLD_MIN_CONFIDENCE"):
+        try:
+            scaffold_detection["min_confidence"] = float(min_confidence)
+        except ValueError as exc:
+            raise ConfigError(
+                "GIT_AI_SCAFFOLD_MIN_CONFIDENCE must be a float."
+            ) from exc
+
+    if large_commit_added_files := source.get("GIT_AI_SCAFFOLD_LARGE_COMMIT_ADDED_FILES"):
+        try:
+            scaffold_detection["large_commit_added_files"] = int(large_commit_added_files)
+        except ValueError as exc:
+            raise ConfigError(
+                "GIT_AI_SCAFFOLD_LARGE_COMMIT_ADDED_FILES must be an integer."
+            ) from exc
+
+    if large_commit_added_ratio := source.get("GIT_AI_SCAFFOLD_LARGE_COMMIT_ADDED_RATIO"):
+        try:
+            scaffold_detection["large_commit_added_ratio"] = float(large_commit_added_ratio)
+        except ValueError as exc:
+            raise ConfigError(
+                "GIT_AI_SCAFFOLD_LARGE_COMMIT_ADDED_RATIO must be a float."
+            ) from exc
+
+    if ignore_ide_files := source.get("GIT_AI_SCAFFOLD_IGNORE_IDE_FILES"):
+        scaffold_detection["ignore_ide_files"] = _string_to_bool(ignore_ide_files)
+
+    if scaffold_detection:
+        result["scaffold_detection"] = scaffold_detection
+
+    return result
+
+
+def load_yaml_config(
+    config_path: str | Path | None = None,
+    cwd: Path | None = None,
+) -> dict[str, Any]:
+    if config_path is None:
+        path = _find_default_config_path(cwd=cwd)
+        if path is None:
+            return {}
+    else:
+        path = Path(config_path)
+
+    if not path.exists():
+        return {}
+
+    with path.open("r", encoding="utf-8") as handle:
+        data = yaml.safe_load(handle) or {}
+
+    if not isinstance(data, dict):
+        raise ConfigError("YAML config root must be a mapping/object.")
+
+    return data

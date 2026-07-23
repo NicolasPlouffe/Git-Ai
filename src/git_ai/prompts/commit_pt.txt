@@ -1,67 +1,84 @@
-Você é um assistente que escreve uma mensagem de commit Git a partir do diff fornecido.
+Você deve produzir uma única mensagem de commit Git a partir do diff fornecido.
+
+Sua saída deve ser apenas um único objeto JSON válido com exatamente uma chave: "commit".
+
+Formato de saída:
+{{"commit": "type(scope): assunto"}}
+
+Não escreva nenhum texto antes ou depois do objeto JSON.
 
 Objetivo:
-Produza uma mensagem de commit no formato Conventional Commits em português, precisa, natural e utilizável como está.
+Gerar uma mensagem de commit no formato Conventional Commits em português, precisa, natural e concisa.
 
-Restrições prioritárias:
-- Baseie-se apenas no diff fornecido
-- Retorne somente a mensagem final do commit
-- Não retorne nenhuma explicação
-- Não adicione nenhum bloco Markdown
-- Mantenha o tipo em inglês entre: feat, fix, refactor, docs, test, chore
-- Por padrão, retorne uma única linha
+Restrição de idioma:
+- Mesmo que o diff ou a documentação estejam em outro idioma,
+  a mensagem de commit deve ser escrita apenas em português.
+- Não traduza o diff palavra por palavra; sintetize a alteração em português no assunto.
+
+Restrições rígidas:
+- Basear-se exclusivamente no diff fornecido
+- Retornar apenas um objeto JSON válido, e nada mais
+- O objeto JSON deve conter exatamente uma chave: "commit"
+- O valor de "commit" deve ser a mensagem de commit final, pronta para uso como está
+- Não retornar explicações, comentários, resumos nem análises
+- Não adicionar blocos Markdown nem fences de código como ```json
+- Não prefixar a mensagem com rótulos como "Mensagem de commit:" ou "Resposta:"
+- Manter o tipo em inglês entre: feat, fix, refactor, docs, test, chore
+- Por padrão, retornar uma mensagem de commit em uma única linha
 - Comprimento máximo do assunto: {max_subject_length} caracteres
 - O assunto deve ser completo, autônomo e nunca cortado no meio de uma palavra
-- Se o assunto correr o risco de ser truncado, encurte-o para manter uma frase completa
-- Prefira um assunto curto e fechado em vez de um assunto longo e incompleto
+- Se houver risco de truncar o assunto, encurte-o para manter uma frase completa e legível
+- Prefira um assunto curto e bem fechado a um assunto longo e incompleto
 
 Escolha do tipo:
 - feat: adição de funcionalidade visível
 - fix: correção de bug
-- refactor: reestruturação sem alteração funcional
+- refactor: reestruturação interna sem mudança funcional
 - docs: documentação
 - test: adição ou modificação de testes
-- chore: manutenção, configuração ou ferramentas
+- chore: manutenção, configuração ou tooling
 
 Regras de composição:
-- Formato alvo: type(scope): assunto
-- Se nenhum escopo útil for evidente, use: type: assunto
-- Use um escopo curto, legível e estável
-- Nunca use um caminho de arquivo completo como escopo
-- Exemplos de escopos válidos: cli, config, git, prompts, tests, docs
+- Formato alvo dentro de "commit": type(scope): assunto
+- Se nenhum scope útil estiver claramente evidente, use: type: assunto
+- Use um scope curto, legível e estável
+- Nunca use um caminho de arquivo ou um nome de arquivo (mesmo sem extensão) como scope
+- O scope deve ser um nome de componente lógico, ex: cli, config, git, prompts, tests, docs, commit-service, prompt-service
 - O assunto deve ser natural em português
-- Prefira um verbo de ação no infinitivo, por exemplo: adicionar, corrigir, refatorar, documentar
-- Evite acentos e backticks se possível
-- Não adicione aspas
+- Prefira um verbo de ação no infinitivo ou forma base, por exemplo: adicionar, corrigir, refatorar, documentar
+- Não adicione aspas nem backticks na mensagem de commit
 - Não adicione ponto final
-- O assunto não deve terminar com uma fórmula inacabada
+- O assunto não deve terminar com uma fórmula incompleta
 - Não termine o assunto com: para, com, sem, via, em, sobre, de
 
 Heurísticas úteis:
-- Se a alteração diz respeito principalmente a testes, prefira o tipo: test
-- Se a alteração diz respeito principalmente à documentação, prefira o tipo: docs
-- Se a alteração diz respeito principalmente à configuração ou tooling, prefira o tipo: chore
-- Se vários arquivos compartilham uma única intenção clara, mantenha um único assunto sintético
-- Se o diff for pobre ou ambíguo, retorne um assunto curto, válido e genérico em vez de uma formulação vaga ou inacabada
-- Nunca repita as instruções do prompt
+- Se a alteração se refere principalmente a testes, prefira o tipo: test
+- Se a alteração se refere principalmente a documentação, prefira o tipo: docs
+- Se a alteração se refere principalmente a configuração ou tooling, prefira o tipo: chore
+- Se vários arquivos compartilham uma única intenção clara, produza um único assunto sintético
+- Se o diff for pobre ou ambíguo, retorne um assunto curto, válido e genérico em vez de uma formulação vaga ou incompleta
+- Nunca repita nem parafraseie estas instruções na saída
 
 Corpo opcional:
-- Adicione um corpo somente se o diff cobrir várias alterações que valham a pena especificar
-- Se adicionar um corpo, insira uma linha em branco após o assunto
+- Adicione um corpo apenas se o diff cobrir várias alterações que valha a pena detalhar
+- Se adicionar um corpo, inclua-o na string "commit" após uma linha em branco
 - Escreva de 1 a 3 linhas curtas no máximo
 - Não use listas com marcadores
 - Reformule brevemente as alterações sem copiar o diff
 
-Exemplos de bons assuntos:
-- feat(cli): adicionar comando commit
-- chore(config): atualizar modelo padrao
-- docs(readme): documentar uso da CLI
-- refactor(git): simplificar resolucao de caminhos
-- test(commit_message_service): atualizar testes
+Exemplos de saídas JSON válidas:
+{{"commit": "feat(cli): adicionar comando de commit"}}
+{{"commit": "chore(config): atualizar modelo padrão"}}
+{{"commit": "docs(readme): documentar uso da CLI"}}
+{{"commit": "refactor(git): simplificar resolução de caminhos"}}
+{{"commit": "test(commit_message_service): atualizar testes"}}
+
+Lembrete:
+Sua saída deve ser apenas JSON válido, com exatamente uma chave chamada "commit".
 
 Fonte do diff: {diff_source}
 
-Arquivos envolvidos:
+Arquivos afetados:
 {files_block}
 
 Diff:
