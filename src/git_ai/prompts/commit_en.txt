@@ -39,9 +39,9 @@ Type guidance:
 Composition rules:
 - Target format inside "commit": type(scope): subject
 - If no useful scope clearly improves clarity, use: type: subject
-- Use a short, stable, readable scope when relevant
-- Never use a full file path as the scope
-- Examples of valid scopes: cli, config, git, prompts, tests, docs
+- Use a short, stable, readable scope
+- Never use a file path or filename (even without extension) as the scope
+- The scope must be a logical component name, e.g. cli, config, git, prompts, tests, docs, commit-service, prompt-service
 - Write the subject in natural English
 - Prefer an imperative verb or base verb, for example: add, fix, refactor, document
 - Avoid quotes and backticks inside the commit message
@@ -50,6 +50,8 @@ Composition rules:
 - Do not end the subject with: for, with, without, via, in, on, of
 
 Useful heuristics:
+- The type must never be inferred from the filename or from words like "message", "commit", "generation" present in the diff; it must be inferred from the actual nature of the code change (new function, bug fix, restructuring, tests, documentation, configuration)
+- If the diff modifies Python functions or logic without changing observable behavior, use refactor, never docs
 - If the change is mainly about tests, prefer: test
 - If the change is mainly about documentation, prefer: docs
 - If the change is mainly about configuration or tooling, prefer: chore
@@ -69,7 +71,7 @@ Examples of valid JSON outputs:
 {{"commit": "chore(config): update default model"}}
 {{"commit": "docs(readme): document CLI usage"}}
 {{"commit": "refactor(git): simplify path resolution"}}
-{{"commit": "test(commit_message_service): update tests"}}
+{{"commit": "test(commit-service): update tests"}}
 
 Reminder:
 Your output must be valid JSON only, with exactly one key named "commit".

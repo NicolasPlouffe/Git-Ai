@@ -42,8 +42,8 @@ Regras de composição:
 - Formato alvo dentro de "commit": type(scope): assunto
 - Se nenhum scope útil estiver claramente evidente, use: type: assunto
 - Use um scope curto, legível e estável
-- Nunca use um caminho de arquivo completo como scope
-- Exemplos de scopes válidos: cli, config, git, prompts, tests, docs
+- Nunca use um caminho de arquivo ou um nome de arquivo (mesmo sem extensão) como scope
+- O scope deve ser um nome de componente lógico, ex: cli, config, git, prompts, tests, docs, commit-service, prompt-service
 - O assunto deve ser natural em português
 - Prefira um verbo de ação no infinitivo ou forma base, por exemplo: adicionar, corrigir, refatorar, documentar
 - Não adicione aspas nem backticks na mensagem de commit
