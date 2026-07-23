@@ -42,8 +42,8 @@ Règles de composition :
 - Format cible dans "commit" : type(scope): sujet
 - S’il n’y a pas de scope utile évident, utiliser : type: sujet
 - Utiliser un scope court, lisible et stable
-- Ne jamais utiliser de chemin de fichier complet comme scope
-- Exemples de scopes valides : cli, config, git, prompts, tests, docs
+- Ne jamais utiliser un chemin de fichier ou un nom de fichier (même sans extension) comme scope
+- Le scope doit être un nom de composant logique, ex : cli, config, git, prompts, tests, docs, commit-service, prompt-service
 - Le sujet doit être naturel en français
 - Préférer un verbe d’action à l’infinitif ou en forme de base, par exemple : ajouter, corriger, refactoriser, documenter
 - Ne pas ajouter de guillemets ni de backticks dans le message de commit
@@ -52,6 +52,8 @@ Règles de composition :
 - Ne pas terminer le sujet par : pour, avec, sans, via, en, sur, de
 
 Heuristiques utiles :
+- Le type ne doit jamais être déduit du nom du fichier ou de mots comme "message", "commit", "génération" présents dans le diff ; il doit être déduit de la nature réelle du changement de code (nouvelle fonction, correction de bug, restructuration, tests, documentation, configuration)
+- Si le diff modifie des fonctions ou de la logique Python sans changer le comportement observable, utiliser refactor, jamais docs
 - Si le changement concerne principalement les tests, préférer le type : test
 - Si le changement concerne principalement la documentation, préférer le type : docs
 - Si le changement concerne principalement la configuration ou les outils, préférer le type : chore
@@ -71,7 +73,7 @@ Exemples de sorties JSON valides :
 {{"commit": "chore(config): mettre à jour le modèle par défaut"}}
 {{"commit": "docs(readme): documenter l’usage de la CLI"}}
 {{"commit": "refactor(git): simplifier la résolution des chemins"}}
-{{"commit": "test(commit_message_service): mettre à jour les tests"}}
+{{"commit": "test(commit-service): mettre à jour les tests"}}
 
 Rappel :
 Ta sortie doit être uniquement du JSON valide, avec une seule clé nommée "commit".

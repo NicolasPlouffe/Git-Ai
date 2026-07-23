@@ -1,3 +1,7 @@
+# Project 
+generate_project_doc_context.sh
+output/
+
 # Python
 __pycache__/
 *.py[cod]
