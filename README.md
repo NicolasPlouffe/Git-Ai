@@ -29,7 +29,7 @@ Avant d'utiliser Git-AI, assurez-vous de disposer de :
 
 - [Git](https://git-scm.com/downloads).
 - [Python 3.11](https://www.python.org/downloads/) installé sur votre machine.
-- [pipx](https://pipx.pypa.io/stable/installation/) pour installer Git-AI de façon isolée.
+- [pipx](https://pipx.pypa.io/latest/how-to/install-pipx.html) pour installer Git-AI de façon isolée.
 - [Ollama](https://ollama.com/download) installé localement.
 - Au moins un modèle disponible dans Ollama.
 
@@ -215,6 +215,86 @@ Si le dépôt est déjà cloné, vous pouvez aussi installer via pipx en local :
 
 ```bash
 pipx install .
+```
+
+## Désinstallation
+
+Pour retirer complètement Git-AI et ses dépendances de votre système.
+
+### Désinstaller Git-AI
+
+```bash
+pipx uninstall git-ai
+```
+
+### Désinstaller pipx
+
+**Si installé via pip**
+
+```bash
+python -m pip uninstall pipx
+```
+
+**macOS (Homebrew)**
+
+```bash
+brew uninstall pipx
+```
+
+**Linux (Ubuntu/Debian)**
+
+```bash
+sudo apt remove pipx
+```
+
+**Nettoyer les résidus**
+
+```bash
+rm -rf ~/.local/pipx
+rm -rf ~/.local/share/pipx
+```
+
+Retirez également la ligne d'export PATH ajoutée par `pipx ensurepath` dans `~/.zshrc` ou `~/.bashrc`, si elle n'est plus nécessaire.
+
+### Désinstaller Ollama
+
+**macOS**
+
+```bash
+rm -rf ~/Library/Application\ Support/Ollama
+rm -rf /Applications/Ollama.app
+sudo rm /usr/local/bin/ollama
+```
+
+**Linux**
+
+```bash
+sudo systemctl stop ollama
+sudo systemctl disable ollama
+sudo rm /usr/local/bin/ollama
+sudo rm -rf /usr/share/ollama
+sudo rm /etc/systemd/system/ollama.service
+sudo systemctl daemon-reload
+sudo userdel ollama
+sudo groupdel ollama
+```
+
+**Windows**
+
+Désinstallez via **Paramètres > Applications > Ollama**, ou exécutez le désinstalleur dans le dossier d'installation.
+
+**Supprimer les modèles téléchargés (tous systèmes, libère l'espace disque)**
+
+```bash
+rm -rf ~/.ollama
+```
+
+### Vérification finale
+
+```bash
+which git-ai   # command not found
+which pipx     # command not found
+which ollama   # command not found
 ```
 
 ## Essayer en 5 minutes
