@@ -224,7 +224,6 @@ Suivez les instructions Linux ci-dessus.
 | `--files`           | Limite la génération à des fichiers ciblés. |
 | `--lang`            | Permet de choisir la langue de sortie.      |
 | `--dry-run`         | Prévisualise sans créer de commit.          |
-| `--push`            | Effectue un push après le commit si demandé.|
 | Provider Ollama     | Utilise un backend local par défaut.        |
 | Config multi-source | Fusion des défauts, YAML, env et CLI.      |
 
