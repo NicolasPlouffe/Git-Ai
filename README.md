@@ -22,14 +22,67 @@ La V1 se concentre sur un périmètre simple et utile : génération depuis le d
 
 ## Prérequis
 
-Avant d’utiliser Git-AI, assurez-vous de disposer de :
+Avant d'utiliser Git-AI, assurez-vous de disposer de :
 
-- [Python 3.11](https://www.python.org/downloads/) installé sur votre machine.
 - [Git](https://git-scm.com/downloads).
+- [Python 3.11](https://www.python.org/downloads/) installé sur votre machine.
+- [pipx](https://pipx.pypa.io/stable/installation/) pour installer Git-AI de façon isolée.
 - [Ollama](https://ollama.com/download) installé localement.
 - Au moins un modèle disponible dans Ollama.
 
 > Git-AI fonctionne en local et utilise par défaut Ollama comme provider LLM.
+
+## Installer pipx
+
+pipx n'est généralement pas installé par défaut. Installez-le selon votre système.
+
+### Windows
+
+Dans **PowerShell** :
+
+```powershell
+python -m pip install --user pipx
+python -m pipx ensurepath
+```
+
+Fermez et rouvrez votre terminal après cette étape.
+
+### macOS
+
+```bash
+brew install pipx
+pipx ensurepath
+```
+
+### Linux (Ubuntu/Debian)
+
+```bash
+sudo apt update && sudo apt install pipx
+pipx ensurepath
+```
+
+Si le paquet système n'est pas disponible ou trop ancien :
+
+```bash
+python3 -m pip install --user pipx
+python3 -m pipx ensurepath
+```
+
+### Après `pipx ensurepath`
+
+Rechargez votre shell pour que la commande `pipx` soit reconnue :
+
+```bash
+source ~/.zshrc   # ou source ~/.bashrc si vous utilisez bash
+```
+
+Sur Windows, fermez et rouvrez simplement le terminal.
+
+### Vérifier l'installation
+
+```bash
+pipx --version
+```
 
 ## Installer Ollama
 
@@ -46,7 +99,7 @@ Dans **PowerShell**, exécuter :
 irm https://ollama.com/install.ps1 | iex
 ```
 
-Ou utiliser l’installateur graphique depuis la page officielle. Ollama nécessite Windows 10 ou plus récent.
+Ou utiliser l'installateur graphique depuis la page officielle. Ollama nécessite Windows 10 ou plus récent.
 
 ### macOS
 
@@ -56,7 +109,7 @@ Dans le terminal :
 curl -fsSL https://ollama.com/install.sh | sh
 ```
 
-Il est aussi possible d’utiliser l’application téléchargée depuis le site officiel.
+Il est aussi possible d'utiliser l'application téléchargée depuis le site officiel.
 
 ### Linux
 
@@ -66,9 +119,9 @@ Dans le terminal :
 curl -fsSL https://ollama.com/install.sh | sh
 ```
 
-Cette méthode est la voie d’installation recommandée pour Linux.
+Cette méthode est la voie d'installation recommandée pour Linux.
 
-### Vérifier l’installation
+### Vérifier l'installation
 
 ```bash
 ollama --version
@@ -80,7 +133,7 @@ ollama --version
 ollama serve
 ```
 
-Selon le système, Ollama peut déjà être lancé automatiquement après installation. L’URL locale attendue par défaut est :
+Selon le système, Ollama peut déjà être lancé automatiquement après installation. L'URL locale attendue par défaut est :
 
 ```text
 http://localhost:11434
@@ -106,9 +159,39 @@ Vérifier les modèles disponibles :
 ollama list
 ```
 
+## Installer Git-AI
+
+```bash
+pipx install "git+https://gitlab.com/NPlouffe/git-ai.git"
+```
+
+### Résoudre "command not found: git-ai"
+
+Si la commande `git-ai` n'est pas reconnue après l'installation, le dossier
+d'installation de pipx n'est probablement pas encore dans votre PATH.
+
+**Linux / macOS**
+
+```bash
+pipx ensurepath
+source ~/.zshrc   # ou source ~/.bashrc si vous utilisez bash
+```
+
+**Windows (PowerShell)**
+
+```powershell
+pipx ensurepath
+```
+
+Puis fermez et rouvrez votre terminal.
+
+**Windows (WSL)**
+
+Suivez les instructions Linux ci-dessus.
+
 ## Essayer en 5 minutes
 
-1. Installer Ollama et un modèle (`llama3.1:8b` ou `qwen2.5-coder:7b`).
+1. Installer pipx, Ollama et un modèle (`llama3.1:8b` ou `qwen2.5-coder:7b`).
 2. Démarrer le service local :
 
    ```bash
@@ -141,7 +224,6 @@ ollama list
 | `--files`           | Limite la génération à des fichiers ciblés. |
 | `--lang`            | Permet de choisir la langue de sortie.      |
 | `--dry-run`         | Prévisualise sans créer de commit.          |
-| `--push`            | Effectue un push après le commit si demandé.|
 | Provider Ollama     | Utilise un backend local par défaut.        |
 | Config multi-source | Fusion des défauts, YAML, env et CLI.      |
 
