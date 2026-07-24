@@ -10,6 +10,15 @@ Git-AI aide à rédiger des messages de commit plus vite, tout en gardant le con
 
 La V1 se concentre sur un périmètre simple et utile : génération depuis le diff stagé, ciblage de fichiers, choix de langue, prévisualisation, commit, push optionnel et intégration avec **Ollama** comme provider local par défaut.
 
+
+> Disponible sur GitLab (source) et GitHub (miroir).
+> 🔗 Ce projet est disponible sur [![GitLab](https://img.shields.io/badge/GitLab-FC6D26?style=flat&logo=gitlab&logoColor=white)](https://gitlab.com/NPlouffe/git-ai)
+ et
+> [![GitHub](https://img.shields.io/badge/GitHub-181717?style=flat&logo=github&logoColor=white)](https://github.com/<ton-username>/git-ai)
+ (miroir).
+>
+> 🎥 Une vidéo de démonstration YouTube est en cours de préparation et sera ajoutée ici prochainement.
+
 ## Points clés
 
 - Génération de message de commit à partir du diff Git stagé.
