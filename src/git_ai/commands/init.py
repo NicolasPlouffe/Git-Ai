@@ -24,7 +24,7 @@ def _validate_language(lang: str) -> str:
     if normalized not in SUPPORTED_LANGUAGES:
         supported = ", ".join(sorted(SUPPORTED_LANGUAGES))
         raise typer.BadParameter(
-            f"Langue non supportée '{lang}'. Langues supportées : {supported}."
+            f"Unsupported language: '{lang}'. Supported languages: {supported}."
         )
     return normalized
 
@@ -34,7 +34,7 @@ def _validate_provider(provider: str) -> str:
     if normalized not in SUPPORTED_PROVIDERS:
         supported = ", ".join(sorted(SUPPORTED_PROVIDERS))
         raise typer.BadParameter(
-            f"Provider non supporté '{provider}'. Providers supportés : {supported}."
+            f"Unsupported provider: '{provider}'. Supported providers: {supported}."
         )
     return normalized
 

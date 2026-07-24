@@ -10,7 +10,7 @@ class FakeProvider:
 
     @property
     def info(self) -> ProviderInfo:
-        return ProviderInfo(name="fake", model_name="test-double")
+        return ProviderInfo(name="fake", model="test-double")
 
     def generate(self, request: LLMRequest) -> LLMResponse:
         self.requests.append(request)
@@ -28,7 +28,7 @@ class DummyProvider:
 
     @property
     def info(self) -> ProviderInfo:
-        return ProviderInfo(name="fake", model_name="dummy-provider")
+        return ProviderInfo(name="fake", model="dummy-provider")
 
     def generate(self, request: LLMRequest) -> LLMResponse:
         self.calls.append(request)
@@ -50,7 +50,7 @@ class StaticResponseProvider:
 
     @property
     def info(self) -> ProviderInfo:
-        return ProviderInfo(name="fake", model_name="static-response")
+        return ProviderInfo(name="fake", model="static-response")
 
     def generate(self, request: LLMRequest) -> LLMResponse:
         return LLMResponse(text=self.text, model_name="static-response")
