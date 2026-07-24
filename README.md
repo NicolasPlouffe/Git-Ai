@@ -1,33 +1,27 @@
 # Git-AI : Commit Assistant
 
-> Outil CLI Python **local-first** pour générer des messages de commit Git à partir d’un diff, avec un **LLM local**.
+> 🔗 Ce projet est disponible sur [![GitLab](https://img.shields.io/badge/GitLab-FC6D26?style=flat&logo=gitlab&logoColor=white)](https://gitlab.com/NPlouffe/git-ai) et [![GitHub](https://img.shields.io/badge/GitHub-181717?style=flat&logo=github&logoColor=white)](https://github.com/NicolasPlouffe/git-ai) (miroir).
+
+🇫🇷 *Version française (ci-dessous)* — 🇬🇧 *English version coming soon*
+
+> Outil CLI Python **local-first** pour générer des messages de commit Git à partir d'un diff, avec un **LLM local**.
 >
 > Pensé à la fois comme un vrai outil de workflow développeur et comme un projet portfolio en **AI engineering**.
 
 ## Aperçu
 
-Git-AI aide à rédiger des messages de commit plus vite, tout en gardant le contrôle sur l’inférence, la configuration et l’environnement d’exécution.
+Git-AI aide à rédiger des messages de commit plus vite, tout en gardant le contrôle sur l'inférence, la configuration et l'environnement d'exécution.
 
 La V1 se concentre sur un périmètre simple et utile : génération depuis le diff stagé, ciblage de fichiers, choix de langue, prévisualisation, commit, push optionnel et intégration avec **Ollama** comme provider local par défaut.
-
-
-> Disponible sur GitLab (source) et GitHub (miroir).
-> 🔗 Ce projet est disponible sur [![GitLab](https://img.shields.io/badge/GitLab-FC6D26?style=flat&logo=gitlab&logoColor=white)](https://gitlab.com/NPlouffe/git-ai)
- et
-> [![GitHub](https://img.shields.io/badge/GitHub-181717?style=flat&logo=github&logoColor=white)](https://github.com/<ton-username>/git-ai)
- (miroir).
->
-> 🎥 Une vidéo de démonstration YouTube est en cours de préparation et sera ajoutée ici prochainement.
 
 ## Points clés
 
 - Génération de message de commit à partir du diff Git stagé.
-- Ciblage de fichiers précis avec `--files`.
-- Sortie multilingue : français, anglais, espagnol.
+- Sortie multilingue : 🇫🇷 français, 🇬🇧 anglais, 🇪🇸 espagnol, 🇧🇷 portugais (Brésil).
 - Provider local par défaut : **Ollama**.
-- Configuration par défaut + YAML + variables d’environnement + options CLI.
+- Configuration par défaut + YAML + variables d'environnement + options CLI.
 - Architecture modulaire, testable et extensible.
-- Tests unitaires et d’intégration sur les flux critiques.
+- Tests unitaires et d'intégration sur les flux critiques.
 
 ## Prérequis
 
@@ -112,8 +106,6 @@ Ou utiliser l'installateur graphique depuis la page officielle. Ollama nécessit
 
 ### macOS
 
-Dans le terminal :
-
 ```bash
 curl -fsSL https://ollama.com/install.sh | sh
 ```
@@ -121,8 +113,6 @@ curl -fsSL https://ollama.com/install.sh | sh
 Il est aussi possible d'utiliser l'application téléchargée depuis le site officiel.
 
 ### Linux
-
-Dans le terminal :
 
 ```bash
 curl -fsSL https://ollama.com/install.sh | sh
@@ -150,8 +140,6 @@ http://localhost:11434
 
 ### Installer le modèle recommandé
 
-Pour démarrer rapidement :
-
 ```bash
 ollama pull llama3.1:8b
 ```
@@ -170,14 +158,23 @@ ollama list
 
 ## Installer Git-AI
 
+### Option recommandée — `pipx` depuis GitLab
+
+La façon la plus simple d'essayer l'outil sans ouvrir un environnement de développement local.
+
 ```bash
 pipx install "git+https://gitlab.com/NPlouffe/git-ai.git"
 ```
 
+**Vérification post-installation :**
+
+```bash
+git-ai --help
+```
+
 ### Résoudre "command not found: git-ai"
 
-Si la commande `git-ai` n'est pas reconnue après l'installation, le dossier
-d'installation de pipx n'est probablement pas encore dans votre PATH.
+Si la commande `git-ai` n'est pas reconnue après l'installation, le dossier d'installation de pipx n'est probablement pas encore dans votre PATH.
 
 **Linux / macOS**
 
@@ -194,57 +191,7 @@ pipx ensurepath
 
 Puis fermez et rouvrez votre terminal.
 
-**Windows (WSL)**
-
-Suivez les instructions Linux ci-dessus.
-
-## Essayer en 5 minutes
-
-1. Installer pipx, Ollama et un modèle (`llama3.1:8b` ou `qwen2.5-coder:7b`).
-2. Démarrer le service local :
-
-   ```bash
-   ollama serve
-   ```
-
-3. Installer Git-AI avec `pipx` :
-
-   ```bash
-   pipx install "git+https://gitlab.com/NPlouffe/git-ai.git"
-   ```
-
-4. Vérifier la commande :
-
-   ```bash
-   git-ai --help
-   ```
-
-5. Générer une première prévisualisation :
-
-   ```bash
-   git-ai commit --dry-run
-   ```
-
-## Fonctionnalités V1
-
-| Fonctionnalité      | Description                                 |
-|---------------------|---------------------------------------------|
-| `git-ai commit`     | Génère un message à partir du diff stagé.   |
-| `--files`           | Limite la génération à des fichiers ciblés. |
-| `--lang`            | Permet de choisir la langue de sortie.      |
-| `--dry-run`         | Prévisualise sans créer de commit.          |
-| Provider Ollama     | Utilise un backend local par défaut.        |
-| Config multi-source | Fusion des défauts, YAML, env et CLI.      |
-
-## Installation
-
-### Option recommandée — `pipx` depuis GitLab
-
-Cette option est la plus simple pour un utilisateur qui veut essayer l’outil sans ouvrir un environnement de développement local.
-
-```bash
-pipx install "git+https://gitlab.com/NPlouffe/git-ai.git"
-```
+**Windows (WSL)** — suivez les instructions Linux ci-dessus.
 
 ### Option développement — clonage local
 
@@ -258,31 +205,66 @@ source .venv/bin/activate
 pip install -e .
 ```
 
-### Option développement avec dépendances complètes
+Avec les dépendances de développement complètes (`pytest`, `pytest-cov`, `ruff`, `mypy`) :
 
 ```bash
-git clone "https://gitlab.com/NPlouffe/git-ai.git"
-cd git-ai
-python -m venv .venv
-source .venv/bin/activate
 pip install -e .[dev]
 ```
 
-Dépendances de développement principales : `pytest`, `pytest-cov`, `ruff`, `mypy`.
-
-### Option locale avec `pipx`
-
-Si le dépôt est déjà cloné :
+Si le dépôt est déjà cloné, vous pouvez aussi installer via pipx en local :
 
 ```bash
 pipx install .
 ```
 
-### Vérification post-installation
+## Essayer en 5 minutes
 
-```bash
-git-ai --help
-```
+1. Installer pipx, Ollama et un modèle (`llama3.1:8b` ou `qwen2.5-coder:7b`), puis démarrer le service :
+
+   ```bash
+   ollama serve
+   ```
+
+2. Installer Git-AI (voir section [Installer Git-AI](#installer-git-ai) ci-dessus), puis vérifier :
+
+   ```bash
+   git-ai --help
+   ```
+
+3. Se placer à la racine d'un dépôt Git et initialiser la configuration :
+
+   ```bash
+   git-ai init
+   ```
+
+4. Ajouter un ou des fichiers au staging comme à l'habitude :
+
+   ```bash
+   git add <fichier ou dossier>
+   ```
+
+5. Générer une première prévisualisation :
+
+   ```bash
+   git-ai commit --dry-run
+   ```
+
+6. Si satisfait du message généré, committer et pousser :
+
+   ```bash
+   git-ai commit && git push
+   ```
+
+## Fonctionnalités V1
+
+| Fonctionnalité      | Description                                 |
+|---------------------|---------------------------------------------|
+| `git-ai commit`     | Génère un message à partir du diff stagé.   |
+| `--files`           | Limite la génération à des fichiers ciblés. |
+| `--lang`            | Permet de choisir la langue de sortie.      |
+| `--dry-run`         | Prévisualise sans créer de commit.          |
+| Provider Ollama     | Utilise un backend local par défaut.        |
+| Config multi-source | Fusion des défauts, YAML, env et CLI.       |
 
 ## Configuration
 
@@ -290,7 +272,7 @@ Ordre de priorité de chargement :
 
 1. Valeurs par défaut.
 2. Fichier YAML.
-3. Variables d’environnement.
+3. Variables d'environnement.
 4. Options CLI.
 
 ### Exemple `git-ai.yaml`
@@ -309,60 +291,34 @@ git:
   remote: origin
 ```
 
-Variables d’environnement prévues dans l’exemple de projet : `GITAI_PROVIDER`, `GITAI_MODEL`, `GITAI_OLLAMA_HOST`, `GITAI_LANGUAGE`.
+Variables d'environnement prévues : `GITAI_PROVIDER`, `GITAI_MODEL`, `GITAI_OLLAMA_HOST`, `GITAI_LANGUAGE`.
 
 ### Paramètres principaux
 
-| Paramètre                 | Rôle                                      |
-|---------------------------|-------------------------------------------|
-| `provider`                | Backend LLM utilisé.                      |
-| `model`                   | Modèle invoqué localement.               |
-| `language`                | Langue de sortie du message.             |
-| `base_url`                | URL du backend local Ollama ou compatible. |
-| `commit.format`           | Format du message, par exemple `conventional`. |
-| `commit.max_subject_length` | Longueur maximale du sujet.           |
-| `commit.include_body`     | Ajoute ou non un corps au commit.        |
-| `git.push_after_commit`   | Active le push automatique après commit. |
-| `git.remote`              | Définit le remote Git ciblé.             |
+| Paramètre                   | Rôle                                           |
+|------------------------------|-------------------------------------------------|
+| `provider`                  | Backend LLM utilisé.                           |
+| `model`                     | Modèle invoqué localement.                     |
+| `language`                  | Langue de sortie du message.                   |
+| `base_url`                  | URL du backend local Ollama ou compatible.     |
+| `commit.format`             | Format du message, par exemple `conventional`. |
+| `commit.max_subject_length` | Longueur maximale du sujet.                    |
+| `commit.include_body`       | Ajoute ou non un corps au commit.              |
+| `git.push_after_commit`     | Active le push automatique après commit.       |
+| `git.remote`                | Définit le remote Git ciblé.                   |
 
 ## Utilisation
 
-### Générer depuis le staging
-
 ```bash
-git-ai commit
-```
-
-### Prévisualiser sans committer
-
-```bash
-git-ai commit --dry-run
-```
-
-### Cibler des fichiers précis
-
-```bash
-git-ai commit --files src/git_ai/cli.py tests/unit/test_cli.py
-```
-
-### Changer la langue
-
-```bash
-git-ai commit --lang fr
-git-ai commit --lang en
-```
-
-### Commit puis push
-
-```bash
-git-ai commit --push
+git-ai commit                        # Générer depuis le staging
+git-ai commit --dry-run              # Prévisualiser sans committer
+git-ai commit --lang fr              # Changer la langue
+git-ai commit --push                 # Commit puis push
 ```
 
 ## Architecture
 
-Le projet est organisé autour de responsabilités claires :
-
-- `src/git_ai/cli.py` : point d’entrée CLI.
+- `src/git_ai/cli.py` : point d'entrée CLI.
 - `src/git_ai/config.py` : chargement, fusion et validation de la configuration.
 - `src/git_ai/providers/` : contrat provider et implémentations concrètes.
 - `src/git_ai/git/` : encapsulation des opérations Git nécessaires.
@@ -373,7 +329,7 @@ Le projet est organisé autour de responsabilités claires :
 ### Flux simplifié de `commit`
 
 1. Charger la configuration.
-2. Déterminer le périmètre : staging courant ou `--files`.
+2. Déterminer le périmètre : staging courant.
 3. Produire le diff Git.
 4. Construire le prompt dans la langue demandée.
 5. Appeler le provider local.
@@ -382,24 +338,13 @@ Le projet est organisé autour de responsabilités claires :
 
 ## Tests
 
-Le projet contient des tests unitaires et d’intégration pour la CLI, la configuration, les modèles, le provider Ollama, la couche Git, la sélection de fichiers et le flux de langue.
-
-### Exécuter toute la suite
-
 ```bash
-pytest
-```
-
-### Exécuter par catégorie
-
-```bash
-pytest tests/unit
-pytest tests/integration
+pytest                    # Toute la suite
+pytest tests/unit         # Tests unitaires
+pytest tests/integration  # Tests d'intégration
 ```
 
 ## Roadmap
-
-Axes déjà identifiés pour la suite :
 
 - provider `llama.cpp` ;
 - sélection interactive de fichiers ;
@@ -410,9 +355,9 @@ Axes déjà identifiés pour la suite :
 
 ## Positionnement portfolio
 
-Git-AI est aussi un projet de démonstration d’AI engineering appliqué :
+Git-AI est aussi un projet de démonstration d'AI engineering appliqué :
 
-- usage concret d’un LLM local dans un workflow développeur ;
+- usage concret d'un LLM local dans un workflow développeur ;
 - architecture Python modulaire et extensible ;
 - configuration multi-source propre ;
 - séparation claire entre logique métier et infrastructure.
