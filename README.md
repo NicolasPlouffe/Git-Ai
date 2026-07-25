@@ -25,6 +25,9 @@ La V1 se concentre sur un périmètre simple et utile : génération depuis le d
 
 ## Prérequis
 
+modifiaction démo
+Une autre modification 
+
 Avant d'utiliser Git-AI, assurez-vous de disposer de :
 
 - [Git](https://git-scm.com/downloads).
