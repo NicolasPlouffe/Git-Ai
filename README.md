@@ -1,6 +1,9 @@
 # Git-AI : Commit Assistant
 
-> 🔗 Ce projet est disponible sur [![GitLab](https://img.shields.io/badge/GitLab-FC6D26?style=flat&logo=gitlab&logoColor=white)](https://gitlab.com/NPlouffe/git-ai) et [![GitHub](https://img.shields.io/badge/GitHub-181717?style=flat&logo=github&logoColor=white)](https://github.com/NicolasPlouffe/git-ai) (miroir).
+> 🔗 Ce projet est disponible sur \
+> [![GitLab](https://img.shields.io/badge/GitLab-FC6D26?style=flat&logo=gitlab&logoColor=white)](https://gitlab.com/NPlouffe/git-ai)
+> [![GitHub](https://img.shields.io/badge/GitHub-181717?style=flat&logo=github&logoColor=white)](https://github.com/NicolasPlouffe/git-ai) (miroir)
+> [![YouTube](https://img.shields.io/badge/YouTube-demo-FF0000?style=flat&logo=youtube&logoColor=white)](https://www.youtube.com/watch?v=d5HUAngFSgo&list=PLBHPWEkVEvnY)
 
 🇫🇷 *Version française (ci-dessous)* — 🇬🇧 *English version coming soon*
 
@@ -22,6 +25,15 @@ La V1 se concentre sur un périmètre simple et utile : génération depuis le d
 - Configuration par défaut + YAML + variables d'environnement + options CLI.
 - Architecture modulaire, testable et extensible.
 - Tests unitaires et d'intégration sur les flux critiques.
+
+## Démo vidéo
+
+Une démo complète de Git-AI (workflow, intégration Ollama, options CLI) est disponible sur YouTube :
+
+[![Voir la démo Git-AI](https://img.youtube.com/vi/d5HUAngFSgo/hqdefault.jpg)](https://www.youtube.com/watch?v=d5HUAngFSgo&list=PLBHPWEkVEvnY)
+
+> La vidéo montre l’installation via `pipx`, la configuration YAML, puis l’usage de `git-ai commit` dans un vrai workflow.
+
 
 ## Prérequis
 
